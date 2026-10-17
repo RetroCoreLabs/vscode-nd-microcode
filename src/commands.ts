@@ -1,13 +1,14 @@
 /**
- * VSCode command handlers for the ND-100/110/120 microcode extension.
+ * VS Code command handlers.
  *
- * Exposes four commands via the Command Palette:
- *   nd-microcode.assembleCurrent     Assemble the active .uc file to a .CODE binary
- *   nd-microcode.assembleAndSplit    Assemble + split into two ROM chip images (high/low)
- *   nd-microcode.disassembleBinary   Load a .CODE file, produce a new .uc document
- *   nd-microcode.assembleLine        Show the assembled bits for the instruction at cursor
+ *   nd-microcode.assembleCurrent     Assemble the active .uc file (any variant)
+ *   nd-microcode.assembleAndSplit    ND-110 / ND-120: assemble + two ROM chip images
+ *   nd-microcode.disassembleBinary   Open an image, produce a new .uc document
+ *   nd-microcode.assembleLine        Show the assembled bits of the instruction at the cursor
+ *   nd-microcode.setModel            Set the variant of this file (src/setModelCommand.ts)
  *
- * All heavy lifting is delegated to `@nd100uc/microcode` (our TS library).
+ * The work itself is in src/core (no VS Code calls there); this file asks the
+ * user for names, writes files and shows messages.
  */
 
 import * as vscode from "vscode";
@@ -17,54 +18,34 @@ import * as path from "node:path";
 import {
   assembleSource,
   binaryToCodeBytes,
-  splitRoms,
-  parseCodeBytes,
-  compileDisassemblerPack,
-  disassembleMap,
-  parseSymbolsText,
-  formatProgram,
-  translateInstruction,
-  preprocess,
-  decodeFields,
-  detectForm,
   readMicrocodeVersion,
-  ROM_SIZE_BYTES,
+  splitRoms,
   type Model,
 } from "@nd100uc/microcode";
-import { loadEmbeddedDefinitions } from "./loadDefsEmbedded";
+import { loadNd1x0 } from "./core/defs";
+import { instructionState } from "./core/instruction";
+import { MODEL_INFO, type AnyModel } from "./core/models";
+import { assembleForModel, disassembleImage } from "./core/operations";
+import {
+  checkDocument,
+  outputChannel,
+  printDiagnostics,
+  publishDiagnostics,
+} from "./diagnostics";
+import { resolveForDocument } from "./modelResolver";
+import { setModelForFile } from "./setModelCommand";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function getDefaultModel(): Model {
-  const config = vscode.workspace.getConfiguration("nd-microcode");
-  const m = config.get<string>("defaultModel", "nd110");
-  return m === "nd120" ? "nd120" : "nd110";
+function activeUcEditor(): vscode.TextEditor | undefined {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || editor.document.languageId !== "uc") {
+    void vscode.window.showErrorMessage("Open a .uc microcode file to use this command.");
+    return undefined;
+  }
+  return editor;
 }
 
-/**
- * Extract a `//#MODEL nd110` or `//#MODEL nd120` directive from the source
- * (first 50 lines only). Falls back to the user's default setting.
- */
-function detectModelFromSource(source: string): Model {
-  const first = source.split(/\r?\n/, 50).join("\n");
-  const m = /^%#MODEL\s+(nd110|nd120)\b/im.exec(first);
-  if (m) return m[1] as Model;
-  return getDefaultModel();
-}
-
-async function pickDefaultOutputPath(
-  sourceUri: vscode.Uri,
-  suffix: string,
-): Promise<vscode.Uri> {
-  const base = sourceUri.fsPath.replace(/\.uc$/i, "");
-  const suggested = vscode.Uri.file(base + suffix);
-  const chosen = await vscode.window.showSaveDialog({
-    defaultUri: suggested,
-    filters: { "ND MicroCode": ["CODE", "bin", "code"] },
-  });
-  return chosen ?? suggested;
+function withoutUcExtension(fsPath: string): string {
+  return fsPath.replace(/\.uc$/i, "");
 }
 
 // ---------------------------------------------------------------------------
@@ -72,73 +53,83 @@ async function pickDefaultOutputPath(
 // ---------------------------------------------------------------------------
 
 export async function assembleCurrentFile(): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor || editor.document.languageId !== "uc") {
+  const editor = activeUcEditor();
+  if (!editor) return;
+  const document = editor.document;
+  const model = resolveForDocument(document).model;
+
+  let result;
+  try {
+    result = assembleForModel(document.getText(), model);
+  } catch (e) {
     void vscode.window.showErrorMessage(
-      "Open a .uc microcode file to use this command.",
+      `Assembly failed: ${e instanceof Error ? e.message : String(e)}`,
     );
     return;
   }
 
-  const source = editor.document.getText();
-  const model = detectModelFromSource(source);
-  const pack = loadDefinitionsSafe(model);
-  if (!pack) return;
+  publishDiagnostics(document, result.diagnostics);
+  const ch = outputChannel();
+  ch.appendLine(`=== Assemble ${path.basename(document.uri.fsPath)} as ${MODEL_INFO[model].display} ===`);
+  printDiagnostics(result.diagnostics);
 
-  const result = assembleSource(source, pack, { model });
-  const errors = result.diagnostics.filter((d) => d.severity === "error");
-  const warnings = result.diagnostics.filter((d) => d.severity === "warning");
-
-  if (errors.length > 0) {
+  const warnings = result.diagnostics.filter((d) => d.severity === "warning").length;
+  if (result.errorCount > 0) {
     const choice = await vscode.window.showWarningMessage(
-      `Assembly completed with ${errors.length} error(s). Continue writing output?`,
+      `Assembly completed with ${result.errorCount} error(s). Continue writing output?`,
       "Show errors",
       "Write anyway",
       "Cancel",
     );
     if (choice === "Show errors") {
-      const panel = vscode.window.createOutputChannel("ND MicroCode");
-      panel.show();
-      for (const e of errors) {
-        panel.appendLine(
-          `ERROR line ${e.line} addr 0o${e.address?.toString(8) ?? "?"}: ${e.message}`,
-        );
-      }
+      ch.show();
       return;
     }
     if (choice !== "Write anyway") return;
   }
 
-  const outUri = await pickDefaultOutputPath(editor.document.uri, ".CODE");
-  const bytes = binaryToCodeBytes(result.binary);
-  await fs.writeFile(outUri.fsPath, bytes);
+  const main = result.files[0]!;
+  const base = withoutUcExtension(document.uri.fsPath);
+  const chosen = await vscode.window.showSaveDialog({
+    defaultUri: vscode.Uri.file(base + main.suffix),
+    filters: { "ND MicroCode": [main.suffix.slice(1), "bin", "code"] },
+  });
+  const mainUri = chosen ?? vscode.Uri.file(base + main.suffix);
+  const outBase = mainUri.fsPath.replace(/\.[^./\\]+$/, "");
+
+  const written: string[] = [];
+  await fs.writeFile(mainUri.fsPath, main.bytes);
+  written.push(path.basename(mainUri.fsPath));
+  for (const extra of result.files.slice(1)) {
+    const p = outBase + extra.suffix;
+    await fs.writeFile(p, extra.bytes);
+    written.push(path.basename(p));
+  }
 
   void vscode.window.showInformationMessage(
-    `Assembled ${result.binary.size} records to ${path.basename(outUri.fsPath)}` +
-    (warnings.length > 0 ? ` (${warnings.length} warnings)` : ""),
+    `Assembled ${result.count} ${result.count === 1 ? "word" : "words"} (${MODEL_INFO[model].display}) to ${written.join(" + ")}` +
+      (warnings > 0 ? ` (${warnings} warnings)` : ""),
   );
 }
 
 // ---------------------------------------------------------------------------
-// assembleAndSplit
+// assembleAndSplit (ND-110 and ND-120 only: two 32 KiB chips)
 // ---------------------------------------------------------------------------
 
 export async function assembleAndSplit(): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor || editor.document.languageId !== "uc") {
-    void vscode.window.showErrorMessage(
-      "Open a .uc microcode file to use this command.",
+  const editor = activeUcEditor();
+  if (!editor) return;
+  const model = resolveForDocument(editor.document).model;
+  if (model !== "nd110" && model !== "nd120" && model !== "nd120-dly") {
+    void vscode.window.showInformationMessage(
+      `No chip split for ${MODEL_INFO[model].display}. The split makes the two 32 KiB EPROM images of the ND-110 and ND-120.`,
     );
     return;
   }
 
-  const source = editor.document.getText();
-  const model = detectModelFromSource(source);
-  const pack = loadDefinitionsSafe(model);
-  if (!pack) return;
-
-  const result = assembleSource(source, pack, { model });
+  const result = assembleSource(editor.document.getText(), loadNd1x0(model), { model });
   const errors = result.diagnostics.filter((d) => d.severity === "error");
+  publishDiagnostics(editor.document, result.diagnostics);
   if (errors.length > 0) {
     const choice = await vscode.window.showWarningMessage(
       `Assembly has ${errors.length} error(s). Continue?`,
@@ -158,21 +149,16 @@ export async function assembleAndSplit(): Promise<void> {
 
   const outDir = outDirUri[0]!.fsPath;
   const base = path.basename(editor.document.uri.fsPath, ".uc");
-
   const { highChip, lowChip } = splitRoms(result.binary, { fill: "empty" });
-  const highPath = path.join(outDir, `${base}_HIGH.bin`);
-  const lowPath = path.join(outDir, `${base}_LOW.bin`);
-  const codePath = path.join(outDir, `${base}.CODE`);
-
-  await fs.writeFile(codePath, binaryToCodeBytes(result.binary));
-  await fs.writeFile(highPath, highChip);
-  await fs.writeFile(lowPath, lowChip);
+  await fs.writeFile(path.join(outDir, `${base}.CODE`), binaryToCodeBytes(result.binary));
+  await fs.writeFile(path.join(outDir, `${base}_HIGH.bin`), highChip);
+  await fs.writeFile(path.join(outDir, `${base}_LOW.bin`), lowChip);
 
   const version = readMicrocodeVersion(result.binary);
   void vscode.window.showInformationMessage(
     `Wrote ${base}.CODE + ${base}_HIGH.bin + ${base}_LOW.bin ` +
-    `(${highChip.length} bytes each, version ` +
-    `${version?.letter ?? "?"} / ${version?.octalValue ?? "?"}, model ${model})`,
+      `(${highChip.length} bytes each, version ` +
+      `${version?.letter ?? "?"} / ${version?.octalValue ?? "?"}, model ${model})`,
   );
 }
 
@@ -180,206 +166,110 @@ export async function assembleAndSplit(): Promise<void> {
 // disassembleBinary
 // ---------------------------------------------------------------------------
 
+async function readIfExists(file: string): Promise<Buffer | undefined> {
+  try {
+    return await fs.readFile(file);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function disassembleBinary(): Promise<void> {
   const uris = await vscode.window.showOpenDialog({
     canSelectFiles: true,
     canSelectMany: false,
-    openLabel: "Open microcode binary (.CODE)",
-    filters: { "ND MicroCode binary": ["CODE", "bin", "code"] },
+    openLabel: "Open microcode image",
+    filters: {
+      "ND MicroCode image": ["CODE", "code", "bin", "DATA", "data", "hex"],
+      "All files": ["*"],
+    },
   });
   if (!uris || uris.length === 0) return;
-  const inputUri = uris[0]!;
+  const inputPath = uris[0]!.fsPath;
+  const bytes = new Uint8Array(await fs.readFile(inputPath));
+  const dir = path.dirname(inputPath);
+  const stem = path.basename(inputPath).replace(/\.[^.]*$/, "");
 
-  const bytes = await fs.readFile(inputUri.fsPath);
+  const labe = await readIfExists(path.join(dir, stem + ".LABE"));
+  const symbols = await readIfExists(path.join(dir, stem + ".SYMBOLS.TXT"));
 
-  // Decide which loader to use. Two formats are accepted:
-  //   - .CODE: 10-byte records (2-byte addr + 8-byte value, little-endian)
-  //   - .bin:  contiguous 8-byte microwords starting at address 0, OR
-  //            two chip images of 32 KiB each if we detect that size.
-  let microcode: Map<number, bigint>;
-  if (bytes.length === ROM_SIZE_BYTES * 2) {
-    // Could be two concatenated 32 KiB chip images? Unusual but handle
-    // gracefully. For now assume .CODE format.
-    microcode = parseCodeBytes(new Uint8Array(bytes));
-  } else if (bytes.length === ROM_SIZE_BYTES) {
-    // Single chip image - cannot disassemble without the other half.
-    void vscode.window.showErrorMessage(
-      "This looks like a single 32 KiB EPROM chip. You need both chips - " +
-      "use the ROM combiner CLI (tools/rom-combiner) to merge them first, " +
-      "then open the resulting .CODE file.",
+  // ND-1x0 .CODE files do not say which of the four tables they use: ask.
+  let nd1x0Model: Model | undefined;
+  if (bytes.length % 10 === 0 && bytes.length !== 262144 && bytes.length !== 147456) {
+    const pick = await vscode.window.showQuickPick(
+      [
+        { label: "Detect from the words", description: "ND-110 or ND-120", model: undefined as Model | undefined },
+        { label: "nd100", description: MODEL_INFO.nd100.description, model: "nd100" as Model },
+        { label: "nd110", description: MODEL_INFO.nd110.description, model: "nd110" as Model },
+        { label: "nd120", description: MODEL_INFO.nd120.description, model: "nd120" as Model },
+        { label: "nd120-dly", description: MODEL_INFO["nd120-dly"].description, model: "nd120-dly" as Model },
+      ],
+      { title: "Variant of this .CODE file" },
     );
-    return;
-  } else {
-    microcode = parseCodeBytes(new Uint8Array(bytes));
+    if (!pick) return;
+    nd1x0Model = pick.model;
   }
 
-  if (microcode.size === 0) {
-    void vscode.window.showErrorMessage("No microcode records found in the file.");
-    return;
-  }
-
-  // Auto-detect storage form + pick model.
-  const formResult = detectForm(microcode);
-  const model: Model = formResult.form;
-
-  // If the file is in ND-110 token form, the disassembler expects
-  // canonical, so XOR-flip each word.
-  const canonical = new Map<number, bigint>();
-  for (const [addr, v] of microcode) {
-    canonical.set(addr, model === "nd110" ? v ^ 0x0FC00000n : v);
-  }
-
-  const pack = loadDefinitionsSafe(model);
-  if (!pack) return;
-
-  // Optionally load a .SYMBOLS.TXT next to the binary.
-  const symPath = inputUri.fsPath.replace(/\.(CODE|code|bin)$/i, ".SYMBOLS.TXT");
-  let symbols: Map<number, string> | undefined;
   try {
-    const symText = await fs.readFile(symPath, "utf8");
-    symbols = new Map(parseSymbolsText(symText));
-  } catch {
-    // No symbols available - that's fine.
+    const out = disassembleImage({
+      bytes,
+      fileName: path.basename(inputPath),
+      labeBytes: labe ? new Uint8Array(labe) : undefined,
+      symbolsText: symbols ? symbols.toString("utf8") : undefined,
+      nd1x0Model,
+    });
+    const doc = await vscode.workspace.openTextDocument({ language: "uc", content: out.text });
+    await vscode.window.showTextDocument(doc);
+    void vscode.window.showInformationMessage(
+      `Disassembled ${out.count} ${MODEL_INFO[out.model].display} words from ${path.basename(inputPath)}`,
+    );
+  } catch (e) {
+    void vscode.window.showErrorMessage(e instanceof Error ? e.message : String(e));
   }
-
-  const compiled = compileDisassemblerPack(pack);
-  const instrs = disassembleMap(canonical, compiled, symbols);
-  const source = formatProgram(instrs);
-
-  const version = readMicrocodeVersion(canonical);
-  const header =
-    `% Disassembled from ${path.basename(inputUri.fsPath)}\n` +
-    `% Model: ${model.toUpperCase()} (detected, confidence ${formResult.confidence.toFixed(2)})\n` +
-    `% Version: ${version?.octalValue ?? "?"} (${version?.letter ?? "?"})\n` +
-    `% Records: ${microcode.size}\n` +
-    (symbols ? `% Symbols loaded: ${symbols.size}\n` : "% No symbols loaded\n") +
-    `%\n\n`;
-
-  const doc = await vscode.workspace.openTextDocument({
-    language: "uc",
-    content: header + source,
-  });
-  await vscode.window.showTextDocument(doc);
 }
 
 // ---------------------------------------------------------------------------
-// assembleLine - dev tool showing the bits for the instruction at cursor
+// assembleLine - the bits of the instruction at the cursor
 // ---------------------------------------------------------------------------
 
 export async function assembleCurrentLine(): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor || editor.document.languageId !== "uc") {
-    void vscode.window.showErrorMessage(
-      "Open a .uc microcode file to use this command.",
-    );
-    return;
-  }
-
-  const source = editor.document.getText();
-  const model = detectModelFromSource(source);
-  const pack = loadDefinitionsSafe(model);
-  if (!pack) return;
-
-  // Preprocess the entire file (needed for label resolution), then find
-  // the instruction that spans the cursor's source line.
-  const sm = preprocess(source);
-  const cursorLine = editor.selection.active.line + 1; // 1-based
-  let target = sm.instructions[0];
-  for (const ins of sm.instructions) {
-    if (ins.line <= cursorLine) target = ins;
-  }
-  if (!target) {
+  const editor = activeUcEditor();
+  if (!editor) return;
+  const model: AnyModel = resolveForDocument(editor.document).model;
+  const state = instructionState(
+    editor.document.getText(),
+    model,
+    editor.selection.active.line + 1,
+  );
+  if (!state) {
     void vscode.window.showInformationMessage("No instruction at cursor.");
     return;
   }
 
-  const diagnostics: Parameters<typeof translateInstruction>[3] = [];
-  const canonicalValue = translateInstruction(target, pack, sm.labels, diagnostics);
-  const storage = model === "nd110" ? canonicalValue ^ 0x0FC00000n : canonicalValue;
-
-  // Decode the canonical word's fields for validation display.
-  const fields = decodeFields(canonicalValue, target.address);
-
-  const panel = vscode.window.createOutputChannel("ND MicroCode");
+  const hex = (v: bigint): string => "0x" + v.toString(16).padStart(Math.ceil(state.wordBits / 4), "0");
+  const panel = outputChannel();
   panel.show();
   panel.appendLine(`============= Assemble current instruction =============`);
-  panel.appendLine(`Model:        ${model}`);
-  panel.appendLine(`Source line:  ${target.line}`);
-  panel.appendLine(`Address:      0o${target.address.toString(8).padStart(6, "0")}`);
-  panel.appendLine(`Tokens:       ${target.args.join(" ")}`);
+  panel.appendLine(`Model:        ${model}${state.formatName ? ` (${state.formatName})` : ""}`);
+  panel.appendLine(`Source line:  ${state.line}`);
+  panel.appendLine(`Address:      0o${state.address.toString(8).padStart(6, "0")}`);
+  panel.appendLine(`Items:        ${state.tokens.join(" ")}`);
   panel.appendLine(``);
-  panel.appendLine(`Canonical:    0x${canonicalValue.toString(16).padStart(16, "0")}`);
-  panel.appendLine(`Storage form: 0x${storage.toString(16).padStart(16, "0")}`);
-  const ws = [
-    Number((canonicalValue >> 48n) & 0xFFFFn),
-    Number((canonicalValue >> 32n) & 0xFFFFn),
-    Number((canonicalValue >> 16n) & 0xFFFFn),
-    Number(canonicalValue & 0xFFFFn),
-  ];
-  panel.appendLine(
-    `  w4=${ws[0]!.toString(8).padStart(6, "0")} ` +
-    `w3=${ws[1]!.toString(8).padStart(6, "0")} ` +
-    `w2=${ws[2]!.toString(8).padStart(6, "0")} ` +
-    `w1=${ws[3]!.toString(8).padStart(6, "0")}`,
-  );
+  panel.appendLine(`Word:         ${hex(state.word)}`);
+  if (state.storage !== undefined) panel.appendLine(`Storage form: ${hex(state.storage)}`);
+  panel.appendLine(`Parts (octal, most significant first): ${state.partsOctal.join(" ")}`);
   panel.appendLine(``);
-  panel.appendLine(`Decoded fields (canonical):`);
-  panel.appendLine(
-    `  ALUI (63:55)=0o${fields.aluI.toString(8)}  ` +
-    `STS (54:53)=${fields.aluSts}  ` +
-    `RASEL (52:51)=${fields.rasel}  ` +
-    `XRF=${fields.xrf}  ` +
-    `RBSEL (49:48)=${fields.rbsel}`,
-  );
-  panel.appendLine(
-    `  CIN (47:46)=${fields.cin}  ` +
-    `ALUM (45:44)=${fields.alum}  ` +
-    `MIS (43:42)=${fields.mis}  ` +
-    `IDBS (41:37)=0o${fields.idbs.toString(8)}  ` +
-    `COMM (36:32)=0o${fields.comm.toString(8)}`,
-  );
-  panel.appendLine(
-    `  T_SEQ (31:30)=${fields.tSeq}  ` +
-    `T_STK (29:28)=${fields.tStk}  ` +
-    `VECT=${fields.vect}  ` +
-    `SCOND=${fields.scond}  ` +
-    `CONDENABL=${fields.condEnabl}  ` +
-    `LOOP=${fields.loop}`,
-  );
-  panel.appendLine(
-    `  CSBIT20=${fields.csbit20}  ` +
-    `BOP (19:16)=0o${fields.bop.toString(8)}  ` +
-    `AOP (15:12)=0o${fields.aop.toString(8)}  ` +
-    (fields.scond === 1
-      ? `LCC=${fields.lcc} TSEL=${fields.tsel} F_SEQ=${fields.fSeq} F_STK=${fields.fStk}`
-      : `branch=0o${fields.branchAddress.toString(8)}`),
-  );
-
-  // Validation report
+  panel.appendLine(`Fields:`);
+  for (const r of state.rows) {
+    const bits = r.hi === r.lo ? `${r.hi}` : `${r.hi}:${r.lo}`;
+    panel.appendLine(`  ${r.name.padEnd(12)} (${bits.padStart(7)}) = 0o${r.value.toString(8)}`);
+  }
   panel.appendLine(``);
-  if (diagnostics.length === 0) {
+  if (state.errors.length === 0) {
     panel.appendLine(`[OK] No validation issues.`);
   } else {
     panel.appendLine(`Validation:`);
-    for (const d of diagnostics) {
-      const prefix = d.severity === "error" ? "[ERROR]" : "[warn]";
-      panel.appendLine(`  ${prefix} ${d.message}`);
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Definition loading - cached, with graceful error reporting
-// ---------------------------------------------------------------------------
-
-function loadDefinitionsSafe(model: Model) {
-  try {
-    return loadEmbeddedDefinitions(model);
-  } catch (e) {
-    void vscode.window.showErrorMessage(
-      `Failed to load ${model} definitions: ${e instanceof Error ? e.message : String(e)}`,
-    );
-    return undefined;
+    for (const e of state.errors) panel.appendLine(`  [issue] ${e}`);
   }
 }
 
@@ -389,21 +279,14 @@ function loadDefinitionsSafe(model: Model) {
 
 export function registerCommands(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "nd-microcode.assembleCurrent",
-      () => void assembleCurrentFile(),
-    ),
-    vscode.commands.registerCommand(
-      "nd-microcode.assembleAndSplit",
-      () => void assembleAndSplit(),
-    ),
-    vscode.commands.registerCommand(
-      "nd-microcode.disassembleBinary",
-      () => void disassembleBinary(),
-    ),
-    vscode.commands.registerCommand(
-      "nd-microcode.assembleLine",
-      () => void assembleCurrentLine(),
-    ),
+    vscode.commands.registerCommand("nd-microcode.assembleCurrent", () => void assembleCurrentFile()),
+    vscode.commands.registerCommand("nd-microcode.assembleAndSplit", () => void assembleAndSplit()),
+    vscode.commands.registerCommand("nd-microcode.disassembleBinary", () => void disassembleBinary()),
+    vscode.commands.registerCommand("nd-microcode.assembleLine", () => void assembleCurrentLine()),
+    vscode.commands.registerCommand("nd-microcode.setModel", () => void setModelForFile()),
+    vscode.commands.registerCommand("nd-microcode.checkFile", () => {
+      const editor = vscode.window.activeTextEditor;
+      if (editor) checkDocument(editor.document);
+    }),
   );
 }

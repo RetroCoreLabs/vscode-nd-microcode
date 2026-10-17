@@ -1,7 +1,7 @@
 {
   "name": "nd-microcode",
-  "displayName": "ND-100/110/120 Microcode",
-  "description": "Syntax highlighting and hover documentation for ND-100/110/120 microcode (.uc) files",
+  "displayName": "ND Microcode (NORD-10, ND-100/110/120, ND-500, ND-5000)",
+  "description": "Highlighting, hover, assemble and disassemble for NORD-10, ND-100, ND-110, ND-120, ND-500 and ND-5000 microcode (.uc) files",
   "version": "0.1.0",
   "publisher": "nd100uc",
   "license": "MIT",
@@ -13,7 +13,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/HackerCorpLabs/vs-extension-nd110-uc.git"
+    "url": "https://github.com/RetroCoreLabs/vs-extension-nd110-uc.git"
   },
   "main": "./out/extension.js",
   "activationEvents": [
@@ -22,16 +22,22 @@
     "onCommand:nd-microcode.assembleAndSplit",
     "onCommand:nd-microcode.disassembleBinary",
     "onCommand:nd-microcode.assembleLine",
-    "onCommand:nd-microcode.openBitView"
+    "onCommand:nd-microcode.openBitView",
+    "onCommand:nd-microcode.setModel",
+    "onCommand:nd-microcode.checkFile"
   ],
   "contributes": {
     "languages": [
       {
         "id": "uc",
         "aliases": [
+          "ND MicroCode",
+          "NORD-10 MicroCode",
           "ND-100 MicroCode",
           "ND-110 MicroCode",
           "ND-120 MicroCode",
+          "ND-500 MicroCode",
+          "ND-5000 MicroCode",
           "uc"
         ],
         "extensions": [
@@ -50,7 +56,7 @@
     "commands": [
       {
         "command": "nd-microcode.assembleCurrent",
-        "title": "Assemble current .uc file to .CODE",
+        "title": "Assemble current .uc file (native image of its variant)",
         "category": "ND Microcode"
       },
       {
@@ -60,7 +66,7 @@
       },
       {
         "command": "nd-microcode.disassembleBinary",
-        "title": "Import binary (.CODE / ROM) and disassemble to .uc",
+        "title": "Import binary image (.CODE / .DATA / .hex) and disassemble to .uc",
         "category": "ND Microcode"
       },
       {
@@ -71,6 +77,16 @@
       {
         "command": "nd-microcode.openBitView",
         "title": "Open live bit-breakdown view",
+        "category": "ND Microcode"
+      },
+      {
+        "command": "nd-microcode.setModel",
+        "title": "Set variant for this file",
+        "category": "ND Microcode"
+      },
+      {
+        "command": "nd-microcode.checkFile",
+        "title": "Check this file (show assembler messages)",
         "category": "ND Microcode"
       }
     ],
@@ -95,11 +111,16 @@
           "command": "nd-microcode.openBitView",
           "when": "editorLangId == uc",
           "group": "nd-microcode@4"
+        },
+        {
+          "command": "nd-microcode.setModel",
+          "when": "editorLangId == uc",
+          "group": "nd-microcode@5"
         }
       ]
     },
     "configuration": {
-      "title": "ND-100/110/120 MicroCode",
+      "title": "ND Microcode",
       "properties": {
         "nd-microcode.hover.showEncoding": {
           "type": "boolean",
@@ -114,14 +135,60 @@
         "nd-microcode.defaultModel": {
           "type": "string",
           "enum": [
+            "nd10",
+            "nd100",
             "nd110",
-            "nd120"
+            "nd120",
+            "nd120-dly",
+            "nd500",
+            "nd5000"
           ],
           "default": "nd110",
-          "description": "Default model when assembling or disassembling. Used if no //#MODEL comment is found."
+          "description": "Variant used when a file has no %#MODEL line, no matching nd-microcode.fileModels entry and the words in the file do not settle it."
+        },
+        "nd-microcode.fileModels": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string",
+            "description": "Variant name: nd10, nd100, nd110, nd120, nd120-dly, nd500, nd5000 (also nord10, nd-500 and so on)."
+          },
+          "markdownDescription": "Variant per file. Key: file pattern relative to the workspace folder (`*.uc` matches the file name, `src/**/*.uc` the path); value: variant name. The first matching entry wins. A `%#MODEL` line in the file wins over this setting."
+        },
+        "nd-microcode.autodetect.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Guess the variant from the words in the file when no %#MODEL line and no fileModels entry applies. The guess is only shown in the status bar; it is never written to the file."
+        },
+        "nd-microcode.diagnostics.onSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Assemble the file when it is saved and show the assembler messages in the editor."
         }
       }
-    }
+    },
+    "configurationDefaults": {
+      "[uc]": {
+        "editor.semanticHighlighting.enabled": true
+      }
+    },
+    "semanticTokenTypes": [
+      {
+        "id": "ucUnknown",
+        "superType": "string",
+        "description": "A word that is not a token, number, label or field of the variant of the file"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "uc",
+        "scopes": {
+          "ucUnknown": [
+            "invalid.illegal"
+          ]
+        }
+      }
+    ]
   },
   "scripts": {
     "generate": "node scripts/generate-hover-data.mjs && node scripts/snapshot-defs.mjs",

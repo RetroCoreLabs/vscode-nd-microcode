@@ -29,6 +29,10 @@ function load(relPath) {
 
 const nd110 = load("defs/tokens/nd110-tokens.yaml");
 const nd120 = load("defs/tokens/nd120-tokens.yaml");
+const nd100 = load("defs/tokens/nd100-tokens.yaml");
+const nd10 = load("defs/tokens/nd10-tokens.yaml");
+const nd500 = load("defs/tokens/nd500-tokens.yaml");
+const nd5000 = load("defs/tokens/nd5000-tokens.yaml");
 const runtime = load("defs/runtime/data-flow.yaml");
 
 // Build a union keyed by token name. ND-120 overrides ND-110 when the
@@ -38,10 +42,12 @@ const entries = new Map();
 function addToken(t, sourceModel) {
   const existing = entries.get(t.token);
   if (existing) {
-    // Merge: add the new model's availability.
+    // Merge: add the new model's availability and its own encoding (the
+    // bits of a name can differ between models).
     if (!existing.models.includes(sourceModel)) {
       existing.models.push(sourceModel);
     }
+    existing.encodings[sourceModel] = t.encoding;
     return;
   }
   entries.set(t.token, {
@@ -54,11 +60,21 @@ function addToken(t, sourceModel) {
     provides: t.provides,
     requires: t.requires,
     encoding: t.encoding,
+    // Encoding per model; the hover shows the one of the resolved model.
+    encodings: { [sourceModel]: t.encoding },
   });
 }
 
 for (const t of nd110.tokens) addToken(t, "nd110");
 for (const t of nd120.tokens) addToken(t, "nd120");
+for (const t of nd100.tokens) addToken(t, "nd100");
+
+// nd120-dly: the three tokens of the variant_overrides block get their own
+// encoding; every other token of nd120-dly is the nd120 one.
+for (const o of nd120.variant_overrides?.["nd120-dly"] ?? []) {
+  const e = entries.get(o.token);
+  if (e) e.encodings["nd120-dly"] = o.encoding;
+}
 
 // Flag ND-120-only tokens explicitly based on which models the token
 // is available in.
@@ -70,7 +86,7 @@ const outDir = resolve(here, "..", "src", "generated");
 mkdirSync(outDir, { recursive: true });
 
 const output = {
-  generatedFrom: "defs/tokens/nd110-tokens.yaml + nd120-tokens.yaml + defs/runtime/data-flow.yaml",
+  generatedFrom: "defs/tokens/nd100|nd110|nd120-tokens.yaml + defs/runtime/data-flow.yaml",
   generatedAt: new Date().toISOString(),
   tokenCount: entries.size,
   tokens: Object.fromEntries(
@@ -149,16 +165,29 @@ const fStk = category((e) => e.category === "F_STK");
 const cond = category((e) => e.category === "COND");
 const special = category((e) => e.category === "SPECIAL");
 
+// Token names of the wide-word models. The semantic token provider colours
+// these per category; the grammar only marks them as keywords (fallback).
+const wideNames = {
+  nd10: nd10.tokens.map((t) => t.token),
+  nd500: nd500.tokens.map((t) => t.token),
+  nd5000: nd5000.tokens.map((t) => t.token),
+};
+const NOT_WORD = "[A-Za-z0-9_,#=.$-]";
+function widePattern(names) {
+  return `(?<!${NOT_WORD})(?:${groupPattern(names)})(?!${NOT_WORD})`;
+}
+
 const grammar = {
   $schema: "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   scopeName: "source.uc",
-  name: "ND-100/110/120 MicroCode",
+  name: "ND Microcode (NORD-10, ND-100/110/120, ND-500, ND-5000)",
   patterns: [
     { include: "#comments" },
     { include: "#labels" },
     { include: "#addressMarker" },
     { include: "#nd120Only" },
     { include: "#opcodes" },
+    { include: "#wideModels" },
     { include: "#end" },
     { include: "#numerics" },
   ],
@@ -166,16 +195,24 @@ const grammar = {
     comments: {
       patterns: [
         { match: "(%).*$", name: "comment.line.percent.uc" },
+        // ND-500 / ND-5000: '#' at the start of a line or after a space
+        // is a comment ('#' inside a token is a register select).
+        { match: "(?<=^|\\s)#(?=\\s|$|[A-Za-z]).*$", name: "comment.line.hash.uc" },
       ],
     },
     labels: {
       patterns: [
-        { match: "^\\s*([A-Z_][A-Z0-9_]*):", name: "entity.name.function.label.uc" },
+        // NAME:  (ND-1x0, ND-500, ND-5000), also after an address 'nnnn/'
+        { match: "^\\s*(?:[0-7]+/\\s*)?([A-Za-z_][A-Za-z0-9_.$]*):", name: "entity.name.function.label.uc" },
+        // NAME,  (NORD-10)
+        { match: "^\\s*(?:[0-7]{4}:?\\s*(?:[0-9A-Fa-f]{8}\\s+)?)?([A-Za-z][A-Za-z0-9_]*),(?=\\s|$)", name: "entity.name.function.label.uc" },
       ],
     },
     addressMarker: {
       patterns: [
         { match: "^\\s*([0-7]+)/", name: "entity.name.section.address.uc" },
+        // NORD-10: 'nnnn:' and the listed 8-digit hex word
+        { match: "^\\s*([0-7]{4}):", name: "entity.name.section.address.uc" },
       ],
     },
     end: {
@@ -189,6 +226,13 @@ const grammar = {
           match: `\\b(?:${groupPattern([...commNd120, ...idbsNd120, ...abNd120])})\\b`,
           name: "keyword.other.nd120-only.uc",
         },
+      ],
+    },
+    wideModels: {
+      patterns: [
+        { match: widePattern(wideNames.nd500), name: "keyword.other.nd500.uc" },
+        { match: widePattern(wideNames.nd5000), name: "keyword.other.nd5000.uc" },
+        { match: widePattern(wideNames.nd10), name: "keyword.other.nd10.uc" },
       ],
     },
     opcodes: {
@@ -262,8 +306,8 @@ const grammar = {
     },
     numerics: {
       patterns: [
-        { match: "#?-?(0x|&)[0-9a-fA-F_]+\\b", name: "constant.numeric.hex.uc" },
-        { match: "\\b[0-7]+\\b", name: "constant.numeric.oct.uc" },
+        { match: "(?<![A-Za-z0-9_])(?:0x|\\$)[0-9a-fA-F_]+\\b", name: "constant.numeric.hex.uc" },
+        { match: "(?<![A-Za-z0-9_])[0-7]+[Bb]?\\b", name: "constant.numeric.oct.uc" },
         { match: "#?0b[01]+\\b", name: "constant.numeric.bin.uc" },
       ],
     },

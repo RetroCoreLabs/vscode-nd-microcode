@@ -19,7 +19,11 @@
  */
 
 import * as vscode from "vscode";
+import { isWideModel } from "@nd100uc/microcode";
 import hoverData from "./generated/token-hover.json";
+import { loadWide, tokenNames } from "./core/defs";
+import { MODEL_INFO, type AnyModel } from "./core/models";
+import { resolveForDocument } from "./modelResolver";
 
 interface TokenEntry {
   name: string;
@@ -31,6 +35,8 @@ interface TokenEntry {
   provides?: string;
   requires?: string;
   encoding: { w1: string; w2: string; w3: string; w4: string };
+  /** Encoding per model (the bits of one name can differ between models). */
+  encodings?: Record<string, { w1: string; w2: string; w3: string; w4: string }>;
 }
 
 interface RuntimeData {
@@ -64,7 +70,7 @@ const data = hoverData as unknown as HoverData;
 // Regex-like char class for identifying a single "word" under the cursor.
 // Tokens contain commas, +, -, *, =. Numerics contain only digits (octal
 // is the default ND convention, hex uses 0x prefix).
-const TOKEN_CHAR_RE = /[A-Z0-9,+\-*=_]/;
+const TOKEN_CHAR_RE = /[A-Za-z0-9,+\-*=_#.$]/;
 const NUMERIC_RE = /^[0-9]+$/;
 
 function wordRangeAtPosition(
@@ -466,7 +472,7 @@ function interpretNumeric(
   return out.join("\n");
 }
 
-function formatTokenHover(entry: TokenEntry): vscode.MarkdownString {
+function formatTokenHover(entry: TokenEntry, model: AnyModel): vscode.MarkdownString {
   const config = vscode.workspace.getConfiguration("nd-microcode");
   const showEncoding = config.get<boolean>("hover.showEncoding", true);
   const showModelWarnings = config.get<boolean>(
@@ -478,13 +484,12 @@ function formatTokenHover(entry: TokenEntry): vscode.MarkdownString {
   md.isTrusted = false;
   md.supportHtml = false;
 
+  const modelNames = entry.models.map((m) => MODEL_INFO[m as AnyModel]?.display ?? m);
   let badge = "";
   if (entry.nd120Only && showModelWarnings) {
     badge = " &nbsp; `[ND-120 only]`";
-  } else if (entry.models.length > 1) {
-    badge = " &nbsp; `[ND-110 + ND-120]`";
   } else {
-    badge = ` &nbsp; \`[${entry.models.join(", ").toUpperCase()}]\``;
+    badge = ` &nbsp; \`[${modelNames.join(" + ")}]\``;
   }
   md.appendMarkdown(`**\`${entry.name}\`**${badge}\n\n`);
 
@@ -510,8 +515,14 @@ function formatTokenHover(entry: TokenEntry): vscode.MarkdownString {
   }
 
   if (showEncoding) {
-    const { w4, w3, w2, w1 } = entry.encoding;
+    // The bits of the resolved model (nd120-dly falls back to nd120).
+    const enc =
+      entry.encodings?.[model] ??
+      (model === "nd120-dly" ? entry.encodings?.nd120 : undefined) ??
+      entry.encoding;
+    const { w4, w3, w2, w1 } = enc;
     md.appendMarkdown(
+      `*Bits for ${MODEL_INFO[model].display}:*\n\n` +
       "| w4 (63:48) | w3 (47:32) | w2 (31:16) | w1 (15:0) |\n" +
       "|:--:|:--:|:--:|:--:|\n" +
       `| \`${w4}\` | \`${w3}\` | \`${w2}\` | \`${w1}\` |\n`,
@@ -534,6 +545,68 @@ function formatNumericHover(
   return md;
 }
 
+/** Hover text for a token of NORD-10, ND-500 or ND-5000. */
+function formatWideTokenHover(word: string, model: AnyModel): vscode.MarkdownString | undefined {
+  if (!isWideModel(model)) return undefined;
+  const pack = loadWide(model);
+  const token = pack.tokensByName.get(word);
+  if (!token) return undefined;
+  const config = vscode.workspace.getConfiguration("nd-microcode");
+  const md = new vscode.MarkdownString();
+  md.isTrusted = false;
+  md.supportHtml = false;
+  md.appendMarkdown(`**\`${token.name}\`** &nbsp; \`[${pack.displayName}]\`\n\n`);
+  if (token.description) md.appendMarkdown(`${token.description}\n\n`);
+  const what =
+    token.memCode !== undefined
+      ? `memory operation code ${token.memCode} (bit 3 in word bit 41, bits 2-0 in bits 34-32)`
+      : token.field !== undefined
+      ? `field \`${token.field}\` = ${token.fieldValue}`
+      : `category \`${token.category}\``;
+  md.appendMarkdown(`*${what}*\n\n`);
+  if (config.get<boolean>("hover.showEncoding", true)) {
+    const top = pack.wordBits - 1;
+    const heads = token.parts.map((_, i) => {
+      const hi = top - i * 16;
+      return `${hi}:${Math.max(hi - 15, 0)}`;
+    });
+    md.appendMarkdown(
+      `| ${heads.join(" | ")} |\n|${heads.map(() => ":--:").join("|")}|\n` +
+      `| ${token.parts.map((p) => "`" + p.toString(8).padStart(6, "0") + "`").join(" | ")} |\n`,
+    );
+  }
+  return md;
+}
+
+/** A name that is not a token of the resolved variant but of another. */
+function otherModelNote(word: string, model: AnyModel): vscode.MarkdownString | undefined {
+  const where = (["nd10", "nd100", "nd110", "nd120", "nd500", "nd5000"] as AnyModel[]).filter(
+    (m) => m !== model && tokenNames(m).has(word),
+  );
+  if (where.length === 0) return undefined;
+  const md = new vscode.MarkdownString();
+  md.appendMarkdown(
+    `**\`${word}\`** is not a ${MODEL_INFO[model].display} token. ` +
+    `It exists in ${where.map((m) => MODEL_INFO[m].display).join(", ")}.`,
+  );
+  return md;
+}
+
+const WIDE_NUMERIC_RE = /^(?:[0-7]+[Bb]?|[0-7]+[Bb]?,[0-7]+[Bb]?)$/;
+
+function wideNumericHover(word: string, model: AnyModel): vscode.MarkdownString {
+  const md = new vscode.MarkdownString();
+  md.appendMarkdown(`**\`${word}\`** &nbsp; *octal constant*\n\n`);
+  if (model === "nd10") {
+    md.appendMarkdown("Octal constant ORed into the micro word as it is (a jump address or bits without a mnemonic).");
+  } else if (word.includes(",")) {
+    md.appendMarkdown("Long argument `n,n`: the first number goes to bits 31-16, the second to bits 15-0.");
+  } else {
+    md.appendMarkdown("Short argument: goes to bits 15-0 of the micro word.");
+  }
+  return md;
+}
+
 export function registerHoverProvider(): vscode.Disposable {
   return vscode.languages.registerHoverProvider(
     { language: "uc" },
@@ -542,11 +615,27 @@ export function registerHoverProvider(): vscode.Disposable {
         const range = wordRangeAtPosition(document, position);
         if (!range) return undefined;
         const word = document.getText(range);
+        const model = resolveForDocument(document).model;
 
-        // Token lookup wins first.
+        if (isWideModel(model)) {
+          const tokenHover = formatWideTokenHover(word, model);
+          if (tokenHover) return new vscode.Hover(tokenHover, range);
+          if (WIDE_NUMERIC_RE.test(word)) {
+            return new vscode.Hover(wideNumericHover(word, model), range);
+          }
+          const note = otherModelNote(word, model);
+          return note ? new vscode.Hover(note, range) : undefined;
+        }
+
+        // ND-100 / ND-110 / ND-120 (and nd120-dly).
         const entry = data.tokens[word];
-        if (entry) {
-          return new vscode.Hover(formatTokenHover(entry), range);
+        const tableModel = model === "nd120-dly" ? "nd120" : model;
+        if (entry && entry.models.includes(tableModel)) {
+          return new vscode.Hover(formatTokenHover(entry, model), range);
+        }
+        if (entry || tokenNames(model).has(word) === false) {
+          const note = otherModelNote(word, model);
+          if (note) return new vscode.Hover(note, range);
         }
 
         // Is this a numeric? Gather tokens from the SAME instruction

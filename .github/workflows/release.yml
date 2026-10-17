@@ -1,0 +1,60 @@
+name: Release VS Code Extension
+
+# Runs when a tag like v0.1.1 is pushed. Builds the .vsix and attaches it
+# to a new GitHub release.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check tag matches package.json version
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Build shared TypeScript library
+        working-directory: external/meta/lib/ts
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package extension
+        run: npm run package
+
+      - name: Name the vsix with the version
+        run: mv nd-microcode.vsix "nd-microcode-${GITHUB_REF_NAME#v}.vsix"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "nd-microcode-${GITHUB_REF_NAME#v}.vsix" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

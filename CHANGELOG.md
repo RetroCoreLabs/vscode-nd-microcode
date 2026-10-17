@@ -2,6 +2,40 @@
 
 All notable changes to the `nd-microcode` VSCode extension.
 
+## Unreleased
+
+### Added
+
+- **Six variants:** NORD-10, ND-100, ND-110, ND-120, ND-500 and ND-5000, with
+  assemble and disassemble in the native format of each (tested against the
+  C# compiler output in the submodule).
+- **Variant choice:** `%#MODEL <name>` line, setting `nd-microcode.fileModels`,
+  a guess from the words in the file, setting `nd-microcode.defaultModel`.
+  Status bar item, command "Set variant for this file", completion for the
+  `%#MODEL` line. Names are accepted in any case, with aliases (`nord10`,
+  `nd-500`, ...).
+- **Variant nd120-dly:** ND-120 version L register selects (`B,P`, `B,B`,
+  `B,X` without the DLY1 bit).
+- **Colouring by variant** (semantic tokens), one colour table per family;
+  constants are never marked unknown.
+- **Diagnostics:** assembler errors and warnings as editor marks (on save and
+  with the command "Check this file").
+- Bit view for any word width (32, 64, 128, 144 bits).
+- Hover shows the bits of the variant of the file (the bits of a name can
+  differ between ND-100, ND-110 and ND-120).
+
+### Changed
+
+- The ND-1x0 assembler ends an instruction at the line that has the `;`, as
+  the C# compiler does (items after the `;` on that line belong to the
+  instruction). Version K/L DELILAH sources now assemble to the C# output.
+- The setting `nd-microcode.defaultModel` accepts all variants.
+
+### Fixed
+
+- ND-100 disassembly lost `T,NEXT` / `T,RETURN` on words with a vectored
+  jump (1201 of 2048 words of the 3033S PROMs); now 2048 of 2048 round trip.
+
 ## 0.1.0 - 2026-04-16
 
 Major upgrade: full ND-100/110/120 support with intelligent hover docs.

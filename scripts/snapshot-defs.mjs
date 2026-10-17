@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 /**
- * Snapshot the repository's defs/ YAML files into a compact JSON
- * (src/generated/definitions.json) that the extension can load without
+ * Snapshot the submodule's defs/ YAML files into one JSON file
+ * (src/generated/definitions.json) that the extension loads without
  * touching the filesystem at runtime.
  *
- * This lets the extension ship in a .vsix without requiring the
- * parent-directory YAML files to be available.
+ * The JSON has the same shape as lib/ts/src/generated-defs.json of the
+ * submodule, so the library functions loadDefinitionsFromJSON() and
+ * loadWideDefinitionsFromJSON() can read it directly:
+ *
+ *   { nd10: {tokens, fields}, nd100: {...}, nd110: {...}, nd120: {...},
+ *     nd500: {...}, nd5000: {...} }
+ *
+ * nd120-dly has no entry of its own: it is nd120 plus the
+ * `variant_overrides` block inside the nd120 tokens document.
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -21,18 +28,20 @@ function load(relPath) {
   return yamlLoad(readFileSync(resolve(META, relPath), "utf8"));
 }
 
-const snapshot = {
-  generatedAt: new Date().toISOString(),
-  nd110Tokens: load("defs/tokens/nd110-tokens.yaml"),
-  nd120Tokens: load("defs/tokens/nd120-tokens.yaml"),
-  nd110Fields: load("defs/fields/nd110-fields.yaml"),
-  nd120Fields: load("defs/fields/nd120-fields.yaml"),
-};
+const MODELS = ["nd10", "nd100", "nd110", "nd120", "nd500", "nd5000"];
+const snapshot = { generatedAt: new Date().toISOString() };
+for (const m of MODELS) {
+  snapshot[m] = {
+    tokens: load(`defs/tokens/${m}-tokens.yaml`),
+    fields: load(`defs/fields/${m}-fields.yaml`),
+  };
+}
 
 const outDir = resolve(here, "..", "src", "generated");
 mkdirSync(outDir, { recursive: true });
-writeFileSync(
-  resolve(outDir, "definitions.json"),
-  JSON.stringify(snapshot),
+writeFileSync(resolve(outDir, "definitions.json"), JSON.stringify(snapshot));
+console.log(
+  "Snapshot: " +
+    MODELS.map((m) => `${m}=${snapshot[m].tokens.tokens.length}`).join(" ") +
+    " tokens",
 );
-console.log(`Snapshot: ND-110=${snapshot.nd110Tokens.tokens.length} tokens, ND-120=${snapshot.nd120Tokens.tokens.length} tokens`);
