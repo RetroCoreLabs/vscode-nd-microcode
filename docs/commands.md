@@ -11,15 +11,15 @@ one of three ways:
 
 The extension starts when a `.uc` file is opened, or when one of its commands is started.
 
-| Command in the palette | Command id | Right-click menu | Needs |
-|------------------------|------------|:----------------:|-------|
-| ND Microcode: [Assemble current .uc file (native image of its variant)](#assemble-current-uc-file) | `nd-microcode.assembleCurrent` | yes | a `.uc` file in the active editor |
-| ND Microcode: [Assemble and split into ROM chip images](#assemble-and-split-into-rom-chip-images) | `nd-microcode.assembleAndSplit` | yes | a `.uc` file of ND-110, ND-120 or ND-120 (L) |
-| ND Microcode: [Show assembled bits for current instruction](#show-assembled-bits-for-current-instruction) | `nd-microcode.assembleLine` | yes | the cursor in an instruction |
-| ND Microcode: [Open live bit-breakdown view](#open-live-bit-breakdown-view) | `nd-microcode.openBitView` | yes | |
-| ND Microcode: [Set variant for this file](#set-variant-for-this-file) | `nd-microcode.setModel` | yes | a `.uc` file in the active editor |
-| ND Microcode: [Import binary image (.CODE / .DATA / .hex) and disassemble to .uc](#import-binary-image-and-disassemble-to-uc) | `nd-microcode.disassembleBinary` | no | nothing |
-| ND Microcode: [Check this file (show assembler messages)](#check-this-file) | `nd-microcode.checkFile` | no | a text editor |
+| Command in the palette | Right-click menu | Needs |
+|------------------------|:----------------:|-------|
+| ND Microcode: [Assemble current .uc file (native image of its variant)](#assemble-current-uc-file) | yes | a `.uc` file in the active editor |
+| ND Microcode: [Assemble and split into ROM chip images](#assemble-and-split-into-rom-chip-images) | yes | a `.uc` file of ND-110, ND-120 or ND-120 (L) |
+| ND Microcode: [Show assembled bits for current instruction](#show-assembled-bits-for-current-instruction) | yes | the cursor in an instruction |
+| ND Microcode: [Open live bit-breakdown view](#open-live-bit-breakdown-view) | yes | |
+| ND Microcode: [Set variant for this file](#set-variant-for-this-file) | yes | a `.uc` file in the active editor |
+| ND Microcode: [Import binary image (.CODE / .DATA / .hex) and disassemble to .uc](#import-binary-image-and-disassemble-to-uc) | no | nothing |
+| ND Microcode: [Check this file (show assembler messages)](#check-this-file) | no | a text editor |
 
 The palette lists every command in every editor. A command that needs a
 `.uc` file shows the message *Open a .uc microcode file to use this command.*
@@ -28,6 +28,8 @@ when the active editor is something else.
 All commands use the variant of the file. See [Choosing the variant](choosing-the-variant.md).
 
 ## Assemble current .uc file
+
+Command id: `nd-microcode.assembleCurrent`
 
 Assembles the file in the active editor for its variant and writes the
 image in the native format of that variant.
@@ -48,6 +50,8 @@ Steps:
 
 ## Assemble and split into ROM chip images
 
+Command id: `nd-microcode.assembleAndSplit`
+
 For the two 32 KiB EPROM chips of the ND-110 and ND-120. Works for `nd110`,
 `nd120` and `nd120-dly`. For any other variant, a message says that there is
 no chip split.
@@ -65,6 +69,8 @@ The message shows the size of a chip and the microcode version (letter and octal
 
 ## Show assembled bits for current instruction
 
+Command id: `nd-microcode.assembleLine`
+
 With the cursor in an instruction, this prints a report in the output
 channel **ND MicroCode** and shows the channel:
 
@@ -78,6 +84,8 @@ If the cursor is not in an instruction the message is *No instruction at cursor.
 
 ## Open live bit-breakdown view
 
+Command id: `nd-microcode.openBitView`
+
 Opens a panel beside the editor, titled **ND MicroCode Bit View**. It shows
 the instruction at the cursor as a grid of bits and a table of the named
 fields with their values. It follows the cursor, and updates when the file is
@@ -87,11 +95,15 @@ editor is not a `.uc` file.
 
 ## Set variant for this file
 
+Command id: `nd-microcode.setModel`
+
 Asks for a variant and for where to keep the choice (a `%#MODEL` line in the
 file, or the `nd-microcode.fileModels` setting). Also started by clicking
 the status bar item. Details: [Choosing the variant](choosing-the-variant.md#set-the-variant).
 
 ## Import binary image and disassemble to .uc
+
+Command id: `nd-microcode.disassembleBinary`
 
 Reads an image file and opens its text as a new `.uc` document that starts
 with a `%#MODEL` line. The new document is not saved; use **Save As** to keep it.
@@ -116,6 +128,8 @@ The header lines of the new document say where it came from, the variant,
 and the number of words.
 
 ## Check this file
+
+Command id: `nd-microcode.checkFile`
 
 Assembles the active file in memory and shows what the assembler says as
 marks in the editor and entries in the Problems view (source `nd-microcode`).
