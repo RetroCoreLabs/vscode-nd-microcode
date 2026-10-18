@@ -1,391 +1,253 @@
-# Generating TypeScript data from the YAML metadata
+# Generating the extension data from the YAML files
 
-The VSCode extension is **100% YAML-driven**. None of the token names,
-encodings, syntax-highlight regexes, hover descriptions, or runtime
-data-flow information are hand-written in TypeScript. Instead, all of
-that lives under `repo-root/defs/` in human-readable
-YAML and gets compiled into three JSON files + one TextMate grammar
-that the extension ships with.
+The extension has no hand-written token tables. Token names, bit patterns,
+colouring rules, hover texts and the data for the assembler and
+disassembler all come from YAML files in the `nd-microcode-meta` submodule,
+which is checked out at `external/meta/` in this repository.
 
-This document describes the pipeline, the YAML inputs, the generated
-outputs, and how to regenerate everything after editing the YAML.
+This page describes the steps from the YAML files to the shipped
+extension, and what to run after editing a YAML file.
 
 ---
 
 ## 1. Quick start
 
+All commands run in the repository root.
+
 ```bash
-cd repo-root/vscode-extension
-npm install          # first time only
-npm run build        # regenerate + compile + bundle
-npm run package      # produce nd-microcode.vsix
+git submodule update --init --recursive      # if external/meta is empty
+cd external/meta/lib/ts && npm ci && npm run build && cd -   # the shared library, once
+npm install                                  # once
+npm run build                                # generate + compile + bundle
+npm run package                              # build, then make nd-microcode.vsix
 ```
 
-`npm run build` runs three scripts in order:
+`npm run build` runs three steps, in this order:
 
-| Step | Script                              | Produces                                                                 |
-|------|-------------------------------------|--------------------------------------------------------------------------|
-| 1    | `scripts/generate-hover-data.mjs`   | `src/generated/token-hover.json`, `src/generated/nd120-only-tokens.json`, `syntaxes/uc.tmLanguage.json` |
-| 2    | `scripts/snapshot-defs.mjs`         | `src/generated/definitions.json`                                          |
-| 3    | `scripts/build-bundle.mjs`          | `out/extension.js` (single-file bundle via esbuild)                      |
+| Step | Command | Writes |
+|------|---------|--------|
+| 1 | `npm run generate` (runs the two scripts below) | see below |
+| 2 | `npm run compile` (`tsc -p ./`) | type check only, output in `out/` |
+| 3 | `npm run bundle` (`scripts/build-bundle.mjs`) | `out/extension.js` |
 
-Step 1 produces the **hover metadata** and the **syntax grammar**.
-Step 2 produces the **definition pack** used by the assembler/
-disassembler at runtime. Step 3 bundles everything into the final
-extension JS.
+`npm run generate` runs two scripts:
+
+| Script | Writes |
+|--------|--------|
+| `scripts/generate-hover-data.mjs` | `src/generated/token-hover.json`, `src/generated/nd120-only-tokens.json`, `syntaxes/uc.tmLanguage.json` |
+| `scripts/snapshot-defs.mjs` | `src/generated/definitions.json` |
+
+The bundle step uses esbuild. It puts the `@nd100uc/microcode` library
+(`external/meta/lib/ts`) inside `out/extension.js`, so the `.vsix` needs
+nothing else. esbuild prints a warning about `import.meta`. It is harmless:
+the extension never calls the library function that uses it.
 
 ---
 
-## 2. Input YAML files
+## 2. The YAML files
 
-Located under `repo-root/defs/`:
+All paths are below `external/meta/defs/`.
 
-| File                                  | Purpose                                                           |
-|---------------------------------------|-------------------------------------------------------------------|
-| `tokens/nd110-tokens.yaml`            | 356 ND-110 tokens with octal encodings                            |
-| `tokens/nd120-tokens.yaml`            | 358 ND-120 tokens (12 ND-120-only are marked)                     |
-| `fields/nd110-fields.yaml`            | Bit-field definitions for ND-110 (bit ranges, widths)             |
-| `fields/nd120-fields.yaml`            | ND-120 deltas / overrides                                         |
-| `runtime/data-flow.yaml`              | Runtime semantics - ALU formulas, IDBS sources, COMM effects, etc |
-| `format/assembly-format.yaml`         | 3-line layout rules, zero-display conventions                     |
-| `common/registers.yaml`               | Shared register naming                                            |
-| `common/conditions.yaml`              | Shared condition codes                                            |
+| File | Content |
+|------|---------|
+| `tokens/nd10-tokens.yaml`, `nd100-tokens.yaml`, `nd110-tokens.yaml`, `nd120-tokens.yaml`, `nd500-tokens.yaml`, `nd5000-tokens.yaml` | Every token of that variant with its bits |
+| `fields/nd10-fields.yaml` ... `nd5000-fields.yaml` | The bit fields of one instruction of that variant |
+| `runtime/data-flow.yaml` | What a token does: ALU formulas, IDBS sources, COMM effects, ALUD behaviour, ALU sources |
+| `format/assembly-format.yaml` | The layout rules of the source text |
+| `common/registers.yaml`, `common/conditions.yaml` | Register names and condition codes |
 
-### Token YAML entry shape
+`nd120-dly` (ND-120 version L) has no file of its own. It is `nd120` with the
+`variant_overrides` block at the end of `nd120-tokens.yaml` applied.
+
+### A token entry
+
+The ND-110 and ND-120 files describe a word of four 16-bit parts, written in
+octal: `w4` is bits 63:48, `w3` bits 47:32, `w2` bits 31:16, `w1` bits 15:0.
+The tokens of one instruction are OR'ed together.
 
 ```yaml
-- token: "ALUF,PASSD"
-  category: ALUF
+- token: "A,D"
+  category: A_REG
   display_line: 1
-  encoding: { w4: "015600", w3: "000000", w2: "000000", w1: "000000" }
-  description: "D -> F"
-  provides: ""
-  requires: ""
-  nd120_only: false
+  encoding: { w4: "000000", w3: "000000", w2: "000000", w1: "010000" }
+  description: A-OP. IS 1. USED TO ADDR. THE D-REGISTER
+  provides: A
   models: [nd100, nd110, nd120]
 ```
 
-### Runtime data-flow entry shape
+A token that exists only in the ND-120 file has `nd120_only: true` and
+`models: [nd120]`.
+
+### The runtime file
+
+`runtime/data-flow.yaml` has these sections that reach the extension:
+`aluf_formulas`, `idbs_sources`, `comm_effects`, `alud_behavior` and
+`alu_sources`.
 
 ```yaml
 aluf_formulas:
   "ALUF,PASSD": "F = D"
-  "ALUF,A+B":   "F = A + B"
-  ...
-
-alud_behavior:
-  3:   # ALUD,B
-    name: RAMF
-    y_bus: F
-    b_register_write: "Reg[BOP] := F"
-    shift: none
-    note: "..."
-
-idbs_sources:
-  "IDBS,ARG": "microinstruction bits 15:0 (the literal from source)"
-  ...
 
 comm_effects:
   "COMM,LDGPR":
     reads: IDB
     writes: "GPR register"
-    uses_a: false
-    uses_b: false
-  ...
 ```
 
 ---
 
-## 3. Generator output
+## 3. What the generator writes
 
 ### 3.1 `src/generated/token-hover.json`
 
-The primary data file consumed by `src/hoverProvider.ts`.
+Read by `src/hoverProvider.ts`. Top-level keys: `generatedFrom`,
+`generatedAt`, `tokenCount`, `tokens`, `runtime`.
 
-```jsonc
-{
-  "generatedFrom": "defs/tokens/nd110-tokens.yaml + nd120-tokens.yaml + defs/runtime/data-flow.yaml",
-  "generatedAt": "2026-04-16T10:35:00.000Z",
-  "tokenCount": 368,
-  "tokens": {
-    "ALUF,PASSD": {
-      "name": "ALUF,PASSD",
-      "category": "ALUF",
-      "displayLine": 1,
-      "description": "D -> F",
-      "models": ["nd110", "nd120"],
-      "nd120Only": false,
-      "encoding": { "w1": "000000", "w2": "000000", "w3": "000000", "w4": "015600" }
-    }
-  },
-  "runtime": {
-    "alufFormulas": { "ALUF,PASSD": "F = D", ... },
-    "idbsSources":  { "IDBS,ARG": "...", ... },
-    "commEffects":  { "COMM,LDGPR": { reads: "IDB", writes: "GPR register", ... }, ... },
-    "aludBehavior": { "3": { name: "RAMF", y_bus: "F", b_register_write: "Reg[BOP] := F" }, ... },
-    "aluSources":   { "0": { name: "A_Q", R: "A register", S: "Q (internal)", am2901: "AQ" }, ... }
-  }
-}
-```
+- `tokens` is keyed by token name. Each entry has `name`, `category`,
+  `displayLine`, `description`, `models`, `nd120Only`, `provides`,
+  `encoding` and `encodings` (one encoding per model, because the bits of one
+  name can differ between models).
+- `runtime` has `alufFormulas`, `idbsSources`, `commEffects`, `aludBehavior`
+  and `aluSources`, copied from `runtime/data-flow.yaml`.
 
 ### 3.2 `src/generated/nd120-only-tokens.json`
 
-A simple list of the ND-120-only token names (for quick checks):
-
-```json
-["AB,BAUD", "AB,NOISE", "AB,OLD303", "COMM,MACL", "COMM,SLOW",
- "COMM,UART,COM", "COMM,UART,DATA", "COMM,UART,MODE",
- "COMM,UART,STATUS", "COMM,XSLOW", "IDBS,PICM", "IDBS,UART"]
-```
+A list of the token names that exist only for the ND-120. A token is on the
+list when its `models` is exactly `nd120`.
 
 ### 3.3 `src/generated/definitions.json`
 
-A compact snapshot of the full YAML token tables + field definitions
-used by the **assembler/disassembler** (when invoked from extension
-commands like "Assemble current .uc file"). See `src/loadDefsEmbedded.ts`
-for how it's consumed - it reconstructs a full `DefinitionPack` in
-memory without needing any filesystem access.
+One snapshot of all six `tokens` and `fields` files:
+`{ nd10: {tokens, fields}, nd100: {...}, nd110: {...}, nd120: {...}, nd500: {...}, nd5000: {...} }`.
+It has the same shape as `lib/ts/src/generated-defs.json` in the submodule, so
+the library functions `loadDefinitionsFromJSON` and
+`loadWideDefinitionsFromJSON` read it directly. `src/core/defs.ts` makes the
+definition packs from it when the extension starts. Nothing is read from disk
+at run time.
 
 ### 3.4 `syntaxes/uc.tmLanguage.json`
 
-TextMate grammar for syntax highlighting. Regenerated from the tokens
-YAML every time. Contains ~22 repository patterns, one per token
-category (A_REG, B_REG, AB_REG, ALUF, IDBS, COMM, ...) plus a special
-`nd120Only` pattern with a distinct scope for the 12 ND-120-only
-opcodes.
+The TextMate grammar, written by `scripts/generate-hover-data.mjs` from the
+token files. It has one named pattern for each token category (`A_REG`,
+`B_REG`, `AB_REG`, `PIC`, `ALUF`, `ALUD`, `ALUM`, `STS`, `CRY`, `MIS`, `IDBS`,
+`COMM`, `TF`, `COND`, `SPECIAL`), a `nd120Only` pattern, an `opcodes` and a
+`wideModels` pattern for the wide variants, and the patterns for comments,
+labels, address markers, `END` and numbers. The colours you see while editing
+come mostly from the semantic tokens (`src/core/classify.ts`), which use the
+variant of the file. See [Hover and colours](hover-and-colours.md).
 
-Never edit this file by hand - your changes will be overwritten on
-the next `npm run generate`.
+Never edit `src/generated/` or `syntaxes/uc.tmLanguage.json` by hand. The
+next `npm run generate` overwrites them.
 
 ---
 
-## 4. Workflow: editing YAML and propagating to the extension
+## 4. What to do after an edit
 
-### Scenario A: fixing a token description or encoding
+### A token description or bit pattern
 
-1. Edit the relevant token in
-   `repo-root/defs/tokens/nd110-tokens.yaml`
-   (or `nd120-tokens.yaml` for ND-120-only entries).
-2. Regenerate + rebuild:
-   ```bash
-   cd vscode-extension
-   npm run build
-   ```
-3. If only testing inside VSCode's extension dev host, press `F5` to
-   launch it - the bundle is reloaded automatically.
-4. To ship the change, package and reinstall:
-   ```bash
-   npm run package
-   code --install-extension nd-microcode.vsix
-   ```
+1. Edit the entry in `external/meta/defs/tokens/<variant>-tokens.yaml`.
+2. In the repository root: `npm run build`.
+3. Press `F5` in VS Code to try it in an Extension Dev Host.
+4. To install it: `npm run package`, then
+   `code --install-extension nd-microcode.vsix`.
 
-### Scenario B: adding a new runtime semantic
+The submodule is its own repository. Commit and push the YAML change there
+first, then commit the new submodule pointer in this repository.
 
-Want to teach the hover what `COMM,FOO` does?
+### A new hover fact (what a COMM or IDBS token does)
 
-1. Edit `repo-root/defs/runtime/data-flow.yaml` and
-   add to the appropriate section:
+1. Add the entry to the right section of
+   `external/meta/defs/runtime/data-flow.yaml`, for example:
+
    ```yaml
    comm_effects:
      "COMM,FOO":
        reads: IDB
-       writes: "My special register"
-       uses_a: true
+       writes: "My register"
    ```
-2. Run `npm run generate && npm run compile` (or `npm run build`).
-3. The generator copies the new `comm_effects` entry into
+
+2. Run `npm run build`. The entry arrives in
    `src/generated/token-hover.json` under `runtime.commEffects`.
-4. `src/hoverProvider.ts` reads the data via the `commConsumesIdb()`
-   helper - no TypeScript changes needed to pick up the new command.
+3. `src/hoverProvider.ts` reads these sections, so a new entry needs no
+   TypeScript change.
 
-### Scenario C: adding new ALUF formulas
+### A new ALUF formula
 
-1. Add to `aluf_formulas` in `defs/runtime/data-flow.yaml`:
-   ```yaml
-   aluf_formulas:
-     "ALUF,MY_OP": "F = A + Q + D"
-   ```
-2. Regenerate. Hover will now show the formula, and if the formula
-   contains `D` the extension will substitute the numeric literal
-   value when `IDBS,ARG` is active.
+Add it to `aluf_formulas` in `data-flow.yaml` and run `npm run build`. When
+the formula contains `D` and the instruction has `IDBS,ARG`, the hover shows
+the number in place of `D`.
 
-### Scenario D: regenerating the syntax grammar
+### A new token
 
-The grammar is regenerated from the tokens YAML automatically when
-you run `npm run generate`. If you add a new token to the YAML, it
-gets a syntax-highlight rule. If the new token is marked
-`nd120_only: true`, it gets the ND-120-only scope.
-
-Custom theme scopes live in `syntaxes/uc.tmLanguage.json` - see
-`vscode-extension/README.md` for the full table.
+Add it to the token file of the variant. The generator gives it a colour
+rule through its `category`. If it is `nd120_only: true`, it gets the
+ND-120-only rule.
 
 ---
 
-## 5. Generator script internals
+## 5. If something is wrong
 
-### `generate-hover-data.mjs`
+**"I edited the YAML but nothing changed."**
+Editing is not enough. Run `npm run build`. If VS Code runs the Extension Dev
+Host, reload its window (`Ctrl+Shift+P`, "Developer: Reload Window"). If you
+installed the `.vsix`, make a new one with `npm run package` and install it
+again.
 
-Read-path:
-```
-defs/tokens/nd110-tokens.yaml   ─┐
-defs/tokens/nd120-tokens.yaml   ─┤
-defs/runtime/data-flow.yaml     ─┤
-                                 │
-                                 ▼
-                  generate-hover-data.mjs
-                                 │
-                                 ▼
-     ┌──────────────────┬──────────────────┐
-     ▼                  ▼                  ▼
-token-hover.json  nd120-only.json  uc.tmLanguage.json
-```
+**"Hover does not work on my new token."**
+The hover finds the word under the cursor with `TOKEN_CHAR_RE` in
+`src/hoverProvider.ts`. A character that is not in that set (letters, digits
+and `, + - * = _ # . $`) ends the word. Add the character there.
 
-Key functions in the script:
-
-- `addToken(t, sourceModel)` - builds the token record, merging
-  ND-110 + ND-120 entries by name and deriving the `models` array.
-- `escapeForRegex(s)` - escapes token names for use in TextMate regex
-  (handles `,`, `+`, `-`, `*`, `=`).
-- `groupPattern(tokens)` - sorts tokens by length descending (so
-  longer matches like `COMM,AWRITE,NEXT` win over `COMM,AWRITE,*`)
-  and produces a regex alternation.
-- `category(predicate)` - filter helper that selects tokens for a
-  given category/flag combination.
-
-The grammar builder produces 20+ named patterns in `repository`
-(`A_REG`, `B_REG`, `AB_REG`, `PIC`, `ALUF`, `ALUD`, `ALUM`, `STS`,
-`CRY`, `MIS`, `IDBS`, `COMM`, `TF`, `COND`, `SPECIAL`, `nd120Only`,
-`comments`, `labels`, `addressMarker`, `end`, `numerics`).
-
-### `snapshot-defs.mjs`
-
-A minimal script that reads the token + field YAML and emits a
-single `definitions.json` with the raw YAML structure preserved.
-`src/loadDefsEmbedded.ts` then reconstructs the full `DefinitionPack`
-(including BigInt encodingValue) from this snapshot.
-
-### `build-bundle.mjs`
-
-Runs esbuild with entry point `src/extension.ts` and produces
-`out/extension.js`. Everything from `@nd100uc/microcode` gets inlined
-into the bundle so the `.vsix` is self-contained.
-
----
-
-## 6. Debugging
-
-### "I edited the YAML but nothing changed"
-
-1. Run `npm run build` - just editing the YAML doesn't auto-regenerate.
-2. If VSCode is running the dev extension, reload the window
-   (`Ctrl+Shift+P` → "Developer: Reload Window").
-3. If you installed the `.vsix`, run `npm run package` and reinstall
-   with `code --install-extension nd-microcode.vsix`.
-
-### "The grammar pattern doesn't match my new token"
-
-Check the generator's escape logic. If the token name contains a
-character not in `[A-Z0-9,+\-*=_]` (the `TOKEN_CHAR_RE` in
-`hoverProvider.ts`), hover won't pick it up as a word either. Extend
-`TOKEN_CHAR_RE` and `escapeForRegex` together.
-
-### "Runtime data is missing for my token"
-
-Check that `defs/runtime/data-flow.yaml` has the entry. Verify by:
+**"The runtime fact for my token is missing."**
+Check the entry in `data-flow.yaml` (a wrong indent or a missing quote makes
+it a different key). Then look at the generated file:
 
 ```bash
-node -e 'const d = JSON.parse(require("fs").readFileSync("src/generated/token-hover.json")); console.log(d.runtime.commEffects["COMM,MY_NEW"])'
-```
-
-If that's undefined after regeneration, the YAML wasn't parsed as
-expected - look for a typo / missing quote / wrong indentation.
-
-### "esbuild warning about import.meta"
-
-Harmless. The upstream library has a `findDefsRoot()` helper that
-uses `import.meta.url`, but the extension never calls it (it uses
-`loadDefsEmbedded.ts` instead). Esbuild doesn't know this and warns.
-The warning can be silenced with:
-
-```js
-// in build-bundle.mjs, pass:
-logLevel: "error"
+node -e 'const d = JSON.parse(require("fs").readFileSync("src/generated/token-hover.json")); console.log(d.runtime.commEffects["COMM,FOO"])'
 ```
 
 ---
 
-## 7. Validating generated data
-
-After regenerating, quick sanity checks:
+## 6. Checking the generated data
 
 ```bash
-cd vscode-extension
-
-# Count tokens
+# number of tokens in the hover file
 node -e 'console.log(JSON.parse(require("fs").readFileSync("src/generated/token-hover.json")).tokenCount)'
 
-# Check a specific token
-node -e 'console.log(JSON.stringify(JSON.parse(require("fs").readFileSync("src/generated/token-hover.json")).tokens["COMM,LDLC"], null, 2))'
+# one token
+node -e 'console.log(JSON.stringify(JSON.parse(require("fs").readFileSync("src/generated/token-hover.json")).tokens["A,D"], null, 2))'
 
-# Check runtime data
-node -e 'const d = JSON.parse(require("fs").readFileSync("src/generated/token-hover.json")); console.log("runtime sections:", Object.keys(d.runtime)); console.log("aluf formula count:", Object.keys(d.runtime.alufFormulas).length); console.log("comm effect count:", Object.keys(d.runtime.commEffects).length)'
-
-# List ND-120-only tokens
-cat src/generated/nd120-only-tokens.json | jq .
+# the ND-120-only names
+cat src/generated/nd120-only-tokens.json
 ```
 
-For a fuller cross-check, run the root project's YAML validator:
-
-```bash
-cd repo-root
-python3 tools/yaml-validator/validate.py
-```
-
-This verifies that the YAML encodings are internally consistent,
-that the ND-110/ND-120 token-set delta matches expectations, and
-that the encodings line up with the reference `.CODE` binaries.
+The submodule has checks of the YAML itself. The library tests (vitest) are
+in `external/meta/lib/ts/tests/` and run with `npm test` in
+`external/meta/lib/ts`. The Python validator
+`external/meta/tools/validate.py` disassembles a `.CODE` binary with the YAML
+tokens and compares the result with the `.uc` source. By default it checks
+the ND-110 RASK image in `external/meta/reference/`; `--model nd110|nd120`,
+`--binary` and `--symbols` change what it checks. It needs PyYAML.
 
 ---
 
-## 8. File relationships (summary)
+## 7. How the files relate
 
 ```
-┌─────────────────────────────────────┐
-│ repo-root/defs/     │
-│                                     │
-│  tokens/*.yaml                      │
-│  fields/*.yaml                      │
-│  runtime/data-flow.yaml     ← EDIT HERE
-│  format/*.yaml                      │
-│  common/*.yaml                      │
-└──────────────────┬──────────────────┘
-                   │
-                   │ npm run generate
-                   ▼
-┌─────────────────────────────────────┐
-│ vscode-extension/src/generated/     │
-│                                     │
-│  token-hover.json                   │
-│  nd120-only-tokens.json             │
-│  definitions.json                   │
-└──────────────────┬──────────────────┘
-                   │
-                   │ npm run compile + bundle
-                   ▼
-┌─────────────────────────────────────┐
-│ vscode-extension/out/               │
-│                                     │
-│  extension.js (bundled, ships)     │
-│                                     │
-│ vscode-extension/syntaxes/          │
-│  uc.tmLanguage.json (generated)     │
-└──────────────────┬──────────────────┘
-                   │
-                   │ npm run package
-                   ▼
-             nd-microcode.vsix
+external/meta/defs/*.yaml            (edit here)
+        |
+        |  npm run generate
+        v
+src/generated/token-hover.json
+src/generated/nd120-only-tokens.json
+src/generated/definitions.json
+syntaxes/uc.tmLanguage.json
+        |
+        |  npm run compile, npm run bundle
+        v
+out/extension.js                     (has the library inside)
+        |
+        |  npm run package
+        v
+nd-microcode.vsix
 ```
-
-The golden rule: **never edit files under `src/generated/` or
-`syntaxes/uc.tmLanguage.json` directly**. They are outputs. Edit
-the YAML under `repo-root/defs/`, then regenerate.
