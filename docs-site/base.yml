@@ -35,6 +35,8 @@ hooks:
 
 theme:
   name: material
+  logo: assets/nd-microcode.svg
+  favicon: assets/nd-microcode.ico
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
