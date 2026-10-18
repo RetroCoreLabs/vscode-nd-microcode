@@ -4,7 +4,7 @@ Syntax highlighting, hover documentation, and assembly/disassembly
 commands for microcode (`.uc`) files of six Norsk Data variants:
 NORD-10, ND-100, ND-110, ND-120, ND-500 and ND-5000.
 
-**Documentation:** <https://retrocorelabs.github.io/vs-extension-nd110-uc/>
+**Documentation:** <https://retrocorelabs.github.io/nd-microcode/>
 (how to choose the variant, the commands and how to start them, the settings,
 and the mnemonics of every variant).
 
@@ -105,8 +105,8 @@ compiler does for version L.
 ## Install from source
 
 ```bash
-git clone --recurse-submodules https://github.com/RetroCoreLabs/vs-extension-nd110-uc.git
-cd vs-extension-nd110-uc
+git clone --recurse-submodules https://github.com/RetroCoreLabs/nd-microcode.git
+cd nd-microcode
 
 # Build the shared TS library (in the submodule)
 cd external/meta/lib/ts && npm ci && npm run build && cd ../../../..

@@ -7,7 +7,7 @@ All notable changes to the `nd-microcode` VSCode extension.
 ### Added
 
 - Documentation site on GitHub Pages
-  (https://retrocorelabs.github.io/vs-extension-nd110-uc/): how to choose the
+  (https://retrocorelabs.github.io/nd-microcode/): how to choose the
   variant, the commands and how to start them, the settings, hover and colours,
   source forms, and one page per variant with every mnemonic, its bits and the
   YAML source.

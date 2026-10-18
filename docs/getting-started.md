@@ -3,7 +3,7 @@
 ## Install
 
 1. Download `nd-microcode-<version>.vsix` from the
-   [Releases page](https://github.com/RetroCoreLabs/vs-extension-nd110-uc/releases).
+   [Releases page](https://github.com/RetroCoreLabs/nd-microcode/releases).
 2. Install it in VS Code, either way:
    - Extensions view, the `...` menu at the top, **Install from VSIX...**, pick the file.
    - Terminal: `code --install-extension nd-microcode-<version>.vsix`
@@ -43,7 +43,7 @@ extension starts and you get:
    (`Ctrl+Shift+P`; `Cmd+Shift+P` on macOS) to write the image file.
 
 The repository has a small file to try everything on:
-[`sample.uc`](https://github.com/RetroCoreLabs/vs-extension-nd110-uc/blob/main/sample.uc)
+[`sample.uc`](https://github.com/RetroCoreLabs/nd-microcode/blob/main/sample.uc)
 (ND-110 microcode).
 
 ## Where to read next
