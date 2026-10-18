@@ -2,7 +2,7 @@
 
 All notable changes to the `nd-microcode` VSCode extension.
 
-## Unreleased
+## 0.2.0 - 2026-10-18
 
 ### Added
 

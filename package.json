@@ -2,7 +2,7 @@
   "name": "nd-microcode",
   "displayName": "ND Microcode (NORD-10, ND-100/110/120, ND-500, ND-5000)",
   "description": "Highlighting, hover, assemble and disassemble for NORD-10, ND-100, ND-110, ND-120, ND-500 and ND-5000 microcode (.uc) files",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "nd100uc",
   "license": "MIT",
   "engines": {
