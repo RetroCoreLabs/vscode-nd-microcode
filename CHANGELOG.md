@@ -2,6 +2,22 @@
 
 All notable changes to the `nd-microcode` VSCode extension.
 
+## 0.2.1 - 2026-10-18
+
+### Added
+
+- Documentation site on GitHub Pages
+  (https://retrocorelabs.github.io/vs-extension-nd110-uc/): how to choose the
+  variant, the commands and how to start them, the settings, hover and colours,
+  source forms, and one page per variant with every mnemonic, its bits and the
+  YAML source.
+
+### Changed
+
+- Metadata submodule updated: corrected `token_count` headers of the ND-100 and
+  ND-110 token files, README facts, validator accepts `T,REPEAT`.
+- `docs/generate-from-yaml.md` rewritten for the six-variant layout.
+
 ## 0.2.0 - 2026-10-18
 
 ### Added
