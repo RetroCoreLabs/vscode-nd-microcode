@@ -1,0 +1,23 @@
+# Made by scripts/gen_docs.py. Do not edit; change docs-site/base.yml or the script.
+# Navigation of the documentation site.
+INHERIT: base.yml
+
+nav:
+- Home: README.md
+- Getting started: docs/getting-started.md
+- Choosing the variant: docs/choosing-the-variant.md
+- Commands: docs/commands.md
+- Settings: docs/settings.md
+- Hover and colours: docs/hover-and-colours.md
+- Source forms: docs/source-forms.md
+- Variants:
+  - Overview: docs/variants/index.md
+  - NORD-10: docs/variants/nd10.md
+  - ND-100: docs/variants/nd100.md
+  - ND-110: docs/variants/nd110.md
+  - ND-120: docs/variants/nd120.md
+  - ND-120 (L): docs/variants/nd120-dly.md
+  - ND-500: docs/variants/nd500.md
+  - ND-5000: docs/variants/nd5000.md
+- Generating TypeScript data from the YAML metadata: docs/generate-from-yaml.md
+- Changelog: CHANGELOG.md

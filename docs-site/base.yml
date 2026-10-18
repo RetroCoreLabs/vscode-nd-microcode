@@ -1,0 +1,84 @@
+# Base settings of the documentation site. docs-site/mkdocs.yml (made by
+# scripts/gen_docs.py) inherits this file and adds the navigation.
+#
+# Tool choice (docs standard, section 1): the repository had no site generator. Its documentation
+# is guides plus reference tables made from YAML/JSON and TypeScript source, and DocFX reads C# only,
+# so the site is MkDocs + Material. One site generator in this repository.
+#
+# Layout (shape A): the repository root is the docs folder, so README.md and
+# CHANGELOG.md are pages and nothing is copied. MkDocs does not accept the
+# folder that holds mkdocs.yml as docs_dir, hence docs-site/. Always build
+# with -d <folder outside the checkout>:
+#   mkdocs build --strict -f docs-site/mkdocs.yml -d "$SITE_OUT"
+# where SITE_OUT is any folder outside the checkout.
+site_name: ND Microcode for VS Code
+site_description: VS Code extension for NORD-10, ND-100, ND-110, ND-120, ND-500 and ND-5000 microcode
+site_url: https://retrocorelabs.github.io/vs-extension-nd110-uc/
+repo_url: https://github.com/RetroCoreLabs/vs-extension-nd110-uc
+repo_name: RetroCoreLabs/vs-extension-nd110-uc
+edit_uri: ""
+
+docs_dir: ..
+# Only README.md, CHANGELOG.md and docs/ are pages. Everything else in the
+# repository (source, node_modules, the submodule, build output) stays out.
+exclude_docs: |
+  .*
+  /*
+  !/README.md
+  !/CHANGELOG.md
+  !/docs/
+
+hooks:
+  - hooks.py
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.indexes
+    - navigation.path
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - toc.follow
+    - content.code.copy
+
+plugins:
+  - search
+
+markdown_extensions:
+  - toc:
+      permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - tables
+  - attr_list
+  - md_in_html
+  - admonition
+  - footnotes
+  - def_list
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.tabbed
+  - mdx_truly_sane_lists:
+      nested_indent: 2
+
+validation:
+  links:
+    not_found: warn
+    anchors: warn

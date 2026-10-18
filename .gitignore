@@ -1,3 +1,7 @@
 node_modules/
 out/
 *.vsix
+
+# Documentation site: virtual environment
+docs-site/.venv/
+__pycache__/

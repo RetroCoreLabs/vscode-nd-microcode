@@ -4,6 +4,10 @@ Syntax highlighting, hover documentation, and assembly/disassembly
 commands for microcode (`.uc`) files of six Norsk Data variants:
 NORD-10, ND-100, ND-110, ND-120, ND-500 and ND-5000.
 
+**Documentation:** <https://retrocorelabs.github.io/vs-extension-nd110-uc/>
+(how to choose the variant, the commands and how to start them, the settings,
+and the mnemonics of every variant).
+
 Part of the [nd100uc toolchain](https://github.com/RetroCoreLabs/nd100uc).
 Uses the shared [nd-microcode-meta](https://github.com/RetroCoreLabs/nd-microcode-meta)
 submodule for token definitions and the TypeScript library.
