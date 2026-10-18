@@ -4,15 +4,13 @@
 
 ND-120 with the version L register selects B,P / B,B / B,X (no DLY1 bit)
 
-| | |
-|---|---|
-| Name for `%#MODEL` and the settings | `nd120-dly` |
-| Also accepted | `nd-120-dly`, `nd120l`, `nd120-l`, `nd-120-l` |
-| Word width in the bit view | 64 bits |
-| Image written by *Assemble* | .CODE, 10-byte records |
-| Ending of the image file | `.CODE` |
-| Mnemonics | 358 |
-| Definitions | [`defs/tokens/nd120-tokens.yaml`, block `variant_overrides`](https://github.com/RetroCoreLabs/nd-microcode-meta/blob/main/defs/tokens/nd120-tokens.yaml) |
+- **Name for `%#MODEL` and the settings:** `nd120-dly`
+- **Also accepted:** `nd-120-dly`, `nd120l`, `nd120-l`, `nd-120-l`
+- **Word width in the bit view:** 64 bits
+- **Image written by *Assemble*:** .CODE, 10-byte records
+- **Ending of the image file:** `.CODE`
+- **Mnemonics:** 358
+- **Definitions:** [`defs/tokens/nd120-tokens.yaml`, block `variant_overrides`](https://github.com/RetroCoreLabs/nd-microcode-meta/blob/main/defs/tokens/nd120-tokens.yaml)
 
 This variant is the [ND-120](nd120.md) table for version L microcode. It has the same mnemonics, the same fields and the same bits, except for 3 mnemonics: the register selects that are assembled without the DLY1 bit (bit 27).
 

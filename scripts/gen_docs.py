@@ -113,11 +113,8 @@ def bits(hi, lo):
 
 
 def kv_table(rows):
-    """Two columns, no visible header."""
-    out = ["| | |", "|---|---|"]
-    for key, value in rows:
-        out.append("| %s | %s |" % (key, value))
-    return "\n".join(out) + "\n"
+    """Facts as a bullet list (a table without a header looks wrong)."""
+    return "\n".join("- **%s:** %s" % (key, value) for key, value in rows) + "\n"
 
 
 def table(header, rows, align=None):

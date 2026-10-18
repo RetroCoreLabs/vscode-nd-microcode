@@ -19,11 +19,13 @@ repo_name: RetroCoreLabs/vs-extension-nd110-uc
 edit_uri: ""
 
 docs_dir: ..
+# The theme's own files (assets/) go through this list too, so they are let through.
 # Only README.md, CHANGELOG.md and docs/ are pages. Everything else in the
 # repository (source, node_modules, the submodule, build output) stays out.
 exclude_docs: |
   .*
   /*
+  !/assets/
   !/README.md
   !/CHANGELOG.md
   !/docs/
