@@ -2,11 +2,11 @@
 
 ## Install
 
-1. Download `nd-microcode-<version>.vsix` from the
-   [Releases page](https://github.com/RetroCoreLabs/nd-microcode/releases).
+1. Download `vscode-nd-microcode-<version>.vsix` from the
+   [Releases page](https://github.com/RetroCoreLabs/vscode-nd-microcode/releases).
 2. Install it in VS Code, either way:
    - Extensions view, the `...` menu at the top, **Install from VSIX...**, pick the file.
-   - Terminal: `code --install-extension nd-microcode-<version>.vsix`
+   - Terminal: `code --install-extension vscode-nd-microcode-<version>.vsix`
 
 VS Code 1.73 or newer is needed. To build the `.vsix` yourself, see
 [Install from source](../README.md#install-from-source).
@@ -43,7 +43,7 @@ extension starts and you get:
    (`Ctrl+Shift+P`; `Cmd+Shift+P` on macOS) to write the image file.
 
 The repository has a small file to try everything on:
-[`sample.uc`](https://github.com/RetroCoreLabs/nd-microcode/blob/main/sample.uc)
+[`sample.uc`](https://github.com/RetroCoreLabs/vscode-nd-microcode/blob/main/sample.uc)
 (ND-110 microcode).
 
 ## Where to read next

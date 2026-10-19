@@ -4,9 +4,9 @@ Syntax highlighting, hover documentation, and assembly/disassembly
 commands for microcode (`.uc`) files of six Norsk Data variants:
 NORD-10, ND-100, ND-110, ND-120, ND-500 and ND-5000.
 
-**Source, issues and releases:** <https://github.com/RetroCoreLabs/nd-microcode>
+**Source, issues and releases:** <https://github.com/RetroCoreLabs/vscode-nd-microcode>
 
-**Documentation:** <https://retrocorelabs.github.io/nd-microcode/>
+**Documentation:** <https://retrocorelabs.github.io/vscode-nd-microcode/>
 (how to choose the variant, the commands and how to start them, the settings,
 and the mnemonics of every variant).
 
@@ -54,10 +54,10 @@ submodule for token definitions and the TypeScript library.
 The variant of a file is the first of these that applies:
 
 1. A `%#MODEL <name>` line in the first 50 lines of the file.
-2. The setting `nd-microcode.fileModels`: file pattern -> variant.
+2. The setting `vscode-nd-microcode.fileModels`: file pattern -> variant.
 3. A guess from the words in the file. The guess is shown in the status
    bar only; it is never written to the file or to a setting.
-4. The setting `nd-microcode.defaultModel`.
+4. The setting `vscode-nd-microcode.defaultModel`.
 
 Names: `nd10`, `nd100`, `nd110`, `nd120`, `nd120-dly`, `nd500`, `nd5000`.
 Also accepted, in any case: `nord10`, `nd-10`, `nd-100`, `nd-110`,
@@ -68,7 +68,7 @@ Example `.vscode/settings.json`:
 
 ```json
 {
-  "nd-microcode.fileModels": {
+  "vscode-nd-microcode.fileModels": {
     "*.nd500.uc": "nd500",
     "microcode/nord10/**/*.uc": "nd10",
     "microcode/delilah-l.uc": "nd120-dly"
@@ -107,8 +107,8 @@ compiler does for version L.
 ## Install from source
 
 ```bash
-git clone --recurse-submodules https://github.com/RetroCoreLabs/nd-microcode.git
-cd nd-microcode
+git clone --recurse-submodules https://github.com/RetroCoreLabs/vscode-nd-microcode.git
+cd vscode-nd-microcode
 
 # Build the shared TS library (in the submodule)
 cd external/meta/lib/ts && npm ci && npm run build && cd ../../../..
@@ -118,20 +118,20 @@ npm install
 npm run build
 
 # Package
-npm run package          # produces nd-microcode.vsix
-code --install-extension nd-microcode.vsix
+npm run package          # produces vscode-nd-microcode.vsix
+code --install-extension vscode-nd-microcode.vsix
 ```
 
 ## Settings
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `nd-microcode.hover.showEncoding` | `true` | Show raw octal encoding in hover |
-| `nd-microcode.hover.showModelWarnings` | `true` | Highlight ND-120-only tokens |
-| `nd-microcode.defaultModel` | `"nd110"` | Variant when nothing else decides (see "Choosing the variant") |
-| `nd-microcode.fileModels` | `{}` | File pattern -> variant, relative to the workspace folder |
-| `nd-microcode.autodetect.enabled` | `true` | Guess the variant from the words in the file |
-| `nd-microcode.diagnostics.onSave` | `true` | Assemble on save and show the assembler messages |
+| `vscode-nd-microcode.hover.showEncoding` | `true` | Show raw octal encoding in hover |
+| `vscode-nd-microcode.hover.showModelWarnings` | `true` | Highlight ND-120-only tokens |
+| `vscode-nd-microcode.defaultModel` | `"nd110"` | Variant when nothing else decides (see "Choosing the variant") |
+| `vscode-nd-microcode.fileModels` | `{}` | File pattern -> variant, relative to the workspace folder |
+| `vscode-nd-microcode.autodetect.enabled` | `true` | Guess the variant from the words in the file |
+| `vscode-nd-microcode.diagnostics.onSave` | `true` | Assemble on save and show the assembler messages |
 
 ## Repository layout
 

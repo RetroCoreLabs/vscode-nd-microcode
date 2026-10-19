@@ -9,7 +9,7 @@ import { resolveModel, type Resolution, type ResolverSettings } from "./core/res
 export function readSettings(
   scope?: vscode.ConfigurationScope,
 ): ResolverSettings {
-  const config = vscode.workspace.getConfiguration("nd-microcode", scope);
+  const config = vscode.workspace.getConfiguration("vscode-nd-microcode", scope);
   return {
     fileModels: config.get<Record<string, string>>("fileModels", {}),
     defaultModel: config.get<string>("defaultModel", "nd110"),

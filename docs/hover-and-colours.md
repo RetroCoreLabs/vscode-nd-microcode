@@ -27,7 +27,7 @@ of the file but is one of another variant, the hover text says so and names
 the variants that have it.
 
 Two settings change the hover text, see [Settings](settings.md):
-`nd-microcode.hover.showEncoding` and `nd-microcode.hover.showModelWarnings`.
+`vscode-nd-microcode.hover.showEncoding` and `vscode-nd-microcode.hover.showModelWarnings`.
 
 For a view of the bits of a whole instruction, use the
 [bit view](commands.md#open-live-bit-breakdown-view).

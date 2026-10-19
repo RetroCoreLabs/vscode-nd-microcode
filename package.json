@@ -1,5 +1,5 @@
 {
-  "name": "nd-microcode",
+  "name": "vscode-nd-microcode",
   "displayName": "ND Microcode (NORD-10, ND-100/110/120, ND-500, ND-5000)",
   "description": "Highlighting, hover, assemble and disassemble for NORD-10, ND-100, ND-110, ND-120, ND-500 and ND-5000 microcode (.uc) files",
   "version": "0.2.1",
@@ -14,18 +14,18 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/RetroCoreLabs/nd-microcode.git"
+    "url": "https://github.com/RetroCoreLabs/vscode-nd-microcode.git"
   },
   "main": "./out/extension.js",
   "activationEvents": [
     "onLanguage:uc",
-    "onCommand:nd-microcode.assembleCurrent",
-    "onCommand:nd-microcode.assembleAndSplit",
-    "onCommand:nd-microcode.disassembleBinary",
-    "onCommand:nd-microcode.assembleLine",
-    "onCommand:nd-microcode.openBitView",
-    "onCommand:nd-microcode.setModel",
-    "onCommand:nd-microcode.checkFile"
+    "onCommand:vscode-nd-microcode.assembleCurrent",
+    "onCommand:vscode-nd-microcode.assembleAndSplit",
+    "onCommand:vscode-nd-microcode.disassembleBinary",
+    "onCommand:vscode-nd-microcode.assembleLine",
+    "onCommand:vscode-nd-microcode.openBitView",
+    "onCommand:vscode-nd-microcode.setModel",
+    "onCommand:vscode-nd-microcode.checkFile"
   ],
   "contributes": {
     "languages": [
@@ -56,37 +56,37 @@
     ],
     "commands": [
       {
-        "command": "nd-microcode.assembleCurrent",
+        "command": "vscode-nd-microcode.assembleCurrent",
         "title": "Assemble current .uc file (native image of its variant)",
         "category": "ND Microcode"
       },
       {
-        "command": "nd-microcode.assembleAndSplit",
+        "command": "vscode-nd-microcode.assembleAndSplit",
         "title": "Assemble and split into ROM chip images",
         "category": "ND Microcode"
       },
       {
-        "command": "nd-microcode.disassembleBinary",
+        "command": "vscode-nd-microcode.disassembleBinary",
         "title": "Import binary image (.CODE / .DATA / .hex) and disassemble to .uc",
         "category": "ND Microcode"
       },
       {
-        "command": "nd-microcode.assembleLine",
+        "command": "vscode-nd-microcode.assembleLine",
         "title": "Show assembled bits for current instruction",
         "category": "ND Microcode"
       },
       {
-        "command": "nd-microcode.openBitView",
+        "command": "vscode-nd-microcode.openBitView",
         "title": "Open live bit-breakdown view",
         "category": "ND Microcode"
       },
       {
-        "command": "nd-microcode.setModel",
+        "command": "vscode-nd-microcode.setModel",
         "title": "Set variant for this file",
         "category": "ND Microcode"
       },
       {
-        "command": "nd-microcode.checkFile",
+        "command": "vscode-nd-microcode.checkFile",
         "title": "Check this file (show assembler messages)",
         "category": "ND Microcode"
       }
@@ -94,46 +94,46 @@
     "menus": {
       "editor/context": [
         {
-          "command": "nd-microcode.assembleCurrent",
+          "command": "vscode-nd-microcode.assembleCurrent",
           "when": "editorLangId == uc",
-          "group": "nd-microcode@1"
+          "group": "vscode-nd-microcode@1"
         },
         {
-          "command": "nd-microcode.assembleAndSplit",
+          "command": "vscode-nd-microcode.assembleAndSplit",
           "when": "editorLangId == uc",
-          "group": "nd-microcode@2"
+          "group": "vscode-nd-microcode@2"
         },
         {
-          "command": "nd-microcode.assembleLine",
+          "command": "vscode-nd-microcode.assembleLine",
           "when": "editorLangId == uc",
-          "group": "nd-microcode@3"
+          "group": "vscode-nd-microcode@3"
         },
         {
-          "command": "nd-microcode.openBitView",
+          "command": "vscode-nd-microcode.openBitView",
           "when": "editorLangId == uc",
-          "group": "nd-microcode@4"
+          "group": "vscode-nd-microcode@4"
         },
         {
-          "command": "nd-microcode.setModel",
+          "command": "vscode-nd-microcode.setModel",
           "when": "editorLangId == uc",
-          "group": "nd-microcode@5"
+          "group": "vscode-nd-microcode@5"
         }
       ]
     },
     "configuration": {
       "title": "ND Microcode",
       "properties": {
-        "nd-microcode.hover.showEncoding": {
+        "vscode-nd-microcode.hover.showEncoding": {
           "type": "boolean",
           "default": true,
           "description": "Show the raw octal encoding (w1-w4) in hover tooltips."
         },
-        "nd-microcode.hover.showModelWarnings": {
+        "vscode-nd-microcode.hover.showModelWarnings": {
           "type": "boolean",
           "default": true,
           "description": "Highlight ND-120-only tokens in hover tooltips."
         },
-        "nd-microcode.defaultModel": {
+        "vscode-nd-microcode.defaultModel": {
           "type": "string",
           "enum": [
             "nd10",
@@ -145,9 +145,9 @@
             "nd5000"
           ],
           "default": "nd110",
-          "description": "Variant used when a file has no %#MODEL line, no matching nd-microcode.fileModels entry and the words in the file do not settle it."
+          "description": "Variant used when a file has no %#MODEL line, no matching vscode-nd-microcode.fileModels entry and the words in the file do not settle it."
         },
-        "nd-microcode.fileModels": {
+        "vscode-nd-microcode.fileModels": {
           "type": "object",
           "default": {},
           "additionalProperties": {
@@ -156,12 +156,12 @@
           },
           "markdownDescription": "Variant per file. Key: file pattern relative to the workspace folder (`*.uc` matches the file name, `src/**/*.uc` the path); value: variant name. The first matching entry wins. A `%#MODEL` line in the file wins over this setting."
         },
-        "nd-microcode.autodetect.enabled": {
+        "vscode-nd-microcode.autodetect.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Guess the variant from the words in the file when no %#MODEL line and no fileModels entry applies. The guess is only shown in the status bar; it is never written to the file."
         },
-        "nd-microcode.diagnostics.onSave": {
+        "vscode-nd-microcode.diagnostics.onSave": {
           "type": "boolean",
           "default": true,
           "description": "Assemble the file when it is saved and show the assembler messages in the editor."
@@ -197,7 +197,7 @@
     "bundle": "node scripts/build-bundle.mjs",
     "watch": "tsc -watch -p ./",
     "build": "npm run generate && npm run compile && npm run bundle",
-    "package": "npm run build && vsce package -o nd-microcode.vsix"
+    "package": "npm run build && vsce package -o vscode-nd-microcode.vsix"
   },
   "dependencies": {
     "@nd100uc/microcode": "file:external/meta/lib/ts"

@@ -13,9 +13,9 @@
 # where SITE_OUT is any folder outside the checkout.
 site_name: ND Microcode for VS Code
 site_description: VS Code extension for NORD-10, ND-100, ND-110, ND-120, ND-500 and ND-5000 microcode
-site_url: https://retrocorelabs.github.io/nd-microcode/
-repo_url: https://github.com/RetroCoreLabs/nd-microcode
-repo_name: RetroCoreLabs/nd-microcode
+site_url: https://retrocorelabs.github.io/vscode-nd-microcode/
+repo_url: https://github.com/RetroCoreLabs/vscode-nd-microcode
+repo_name: RetroCoreLabs/vscode-nd-microcode
 edit_uri: ""
 
 docs_dir: ..
@@ -90,5 +90,5 @@ validation:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/RetroCoreLabs/nd-microcode
+      link: https://github.com/RetroCoreLabs/vscode-nd-microcode
       name: Source, issues and releases on GitHub

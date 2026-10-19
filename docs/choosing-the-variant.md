@@ -19,12 +19,12 @@ The pages under [Variants](variants/index.md) list the mnemonics of each one.
 The variant of a file is the **first** of these that applies:
 
 1. **A `%#MODEL <name>` line** in the first 50 lines of the file.
-2. **The setting `nd-microcode.fileModels`:** a list of file patterns, each with a variant.
+2. **The setting `vscode-nd-microcode.fileModels`:** a list of file patterns, each with a variant.
 3. **A guess from the words in the file.** The guess is only shown in the status bar. It is never written to the file or to a setting.
-4. **The setting `nd-microcode.defaultModel`** (`nd110` until you change it).
+4. **The setting `vscode-nd-microcode.defaultModel`** (`nd110` until you change it).
 
 Rule 1 beats rule 2, rule 2 beats rule 3, rule 3 beats rule 4. The guess
-(rule 3) can be switched off with `nd-microcode.autodetect.enabled`.
+(rule 3) can be switched off with `vscode-nd-microcode.autodetect.enabled`.
 
 ## See which variant is in use
 
@@ -55,7 +55,7 @@ from the Command Palette or the right-click menu. Two lists follow:
    - **Write a `%#MODEL` line into this file.** The line goes at the top of the
       file, or replaces the `%#MODEL` line that is already there. It goes with the file.
    - **Store in the folder settings.** An entry for this file is added to
-      `nd-microcode.fileModels` in the `.vscode/settings.json` of the workspace
+      `vscode-nd-microcode.fileModels` in the `.vscode/settings.json` of the workspace
       folder. The file itself is not changed. A file that is not inside a
       workspace folder cannot use this; the extension tells you to write the line.
 
@@ -88,12 +88,12 @@ extension goes on to rule 2.
 
 ### The setting
 
-`nd-microcode.fileModels` maps file patterns to variants. Put it in
+`vscode-nd-microcode.fileModels` maps file patterns to variants. Put it in
 `.vscode/settings.json` of the workspace to share it with the project:
 
 ```json
 {
-  "nd-microcode.fileModels": {
+  "vscode-nd-microcode.fileModels": {
     "*.nd500.uc": "nd500",
     "microcode/nord10/**/*.uc": "nd10",
     "microcode/delilah-l.uc": "nd120-dly"

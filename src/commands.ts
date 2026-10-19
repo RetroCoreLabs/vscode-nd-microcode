@@ -1,11 +1,11 @@
 /**
  * VS Code command handlers.
  *
- *   nd-microcode.assembleCurrent     Assemble the active .uc file (any variant)
- *   nd-microcode.assembleAndSplit    ND-110 / ND-120: assemble + two ROM chip images
- *   nd-microcode.disassembleBinary   Open an image, produce a new .uc document
- *   nd-microcode.assembleLine        Show the assembled bits of the instruction at the cursor
- *   nd-microcode.setModel            Set the variant of this file (src/setModelCommand.ts)
+ *   vscode-nd-microcode.assembleCurrent     Assemble the active .uc file (any variant)
+ *   vscode-nd-microcode.assembleAndSplit    ND-110 / ND-120: assemble + two ROM chip images
+ *   vscode-nd-microcode.disassembleBinary   Open an image, produce a new .uc document
+ *   vscode-nd-microcode.assembleLine        Show the assembled bits of the instruction at the cursor
+ *   vscode-nd-microcode.setModel            Set the variant of this file (src/setModelCommand.ts)
  *
  * The work itself is in src/core (no VS Code calls there); this file asks the
  * user for names, writes files and shows messages.
@@ -279,12 +279,12 @@ export async function assembleCurrentLine(): Promise<void> {
 
 export function registerCommands(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand("nd-microcode.assembleCurrent", () => void assembleCurrentFile()),
-    vscode.commands.registerCommand("nd-microcode.assembleAndSplit", () => void assembleAndSplit()),
-    vscode.commands.registerCommand("nd-microcode.disassembleBinary", () => void disassembleBinary()),
-    vscode.commands.registerCommand("nd-microcode.assembleLine", () => void assembleCurrentLine()),
-    vscode.commands.registerCommand("nd-microcode.setModel", () => void setModelForFile()),
-    vscode.commands.registerCommand("nd-microcode.checkFile", () => {
+    vscode.commands.registerCommand("vscode-nd-microcode.assembleCurrent", () => void assembleCurrentFile()),
+    vscode.commands.registerCommand("vscode-nd-microcode.assembleAndSplit", () => void assembleAndSplit()),
+    vscode.commands.registerCommand("vscode-nd-microcode.disassembleBinary", () => void disassembleBinary()),
+    vscode.commands.registerCommand("vscode-nd-microcode.assembleLine", () => void assembleCurrentLine()),
+    vscode.commands.registerCommand("vscode-nd-microcode.setModel", () => void setModelForFile()),
+    vscode.commands.registerCommand("vscode-nd-microcode.checkFile", () => {
       const editor = vscode.window.activeTextEditor;
       if (editor) checkDocument(editor.document);
     }),

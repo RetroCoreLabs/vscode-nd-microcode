@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 import { assembleForModel, type Diag } from "./core/operations";
 import { resolveForDocument } from "./modelResolver";
 
-const collection = vscode.languages.createDiagnosticCollection("nd-microcode");
+const collection = vscode.languages.createDiagnosticCollection("vscode-nd-microcode");
 let channel: vscode.OutputChannel | undefined;
 
 export function outputChannel(): vscode.OutputChannel {
@@ -27,7 +27,7 @@ export function publishDiagnostics(document: vscode.TextDocument, diags: readonl
     if (d.line <= 0 || d.line > document.lineCount) continue;
     const range = document.lineAt(d.line - 1).range;
     const diag = new vscode.Diagnostic(range, d.message, severityOf(d));
-    diag.source = "nd-microcode";
+    diag.source = "vscode-nd-microcode";
     out.push(diag);
   }
   collection.set(document.uri, out);
@@ -64,7 +64,7 @@ export function registerDiagnostics(context: vscode.ExtensionContext): void {
     collection,
     vscode.workspace.onDidSaveTextDocument((doc) => {
       const on = vscode.workspace
-        .getConfiguration("nd-microcode", doc.uri)
+        .getConfiguration("vscode-nd-microcode", doc.uri)
         .get<boolean>("diagnostics.onSave", true);
       if (on) checkDocument(doc);
     }),

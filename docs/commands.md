@@ -29,7 +29,7 @@ All commands use the variant of the file. See [Choosing the variant](choosing-th
 
 ## Assemble current .uc file
 
-Command id: `nd-microcode.assembleCurrent`
+Command id: `vscode-nd-microcode.assembleCurrent`
 
 Assembles the file in the active editor for its variant and writes the
 image in the native format of that variant.
@@ -50,7 +50,7 @@ Steps:
 
 ## Assemble and split into ROM chip images
 
-Command id: `nd-microcode.assembleAndSplit`
+Command id: `vscode-nd-microcode.assembleAndSplit`
 
 For the two 32 KiB EPROM chips of the ND-110 and ND-120. Works for `nd110`,
 `nd120` and `nd120-dly`. For any other variant, a message says that there is
@@ -69,7 +69,7 @@ The message shows the size of a chip and the microcode version (letter and octal
 
 ## Show assembled bits for current instruction
 
-Command id: `nd-microcode.assembleLine`
+Command id: `vscode-nd-microcode.assembleLine`
 
 With the cursor in an instruction, this prints a report in the output
 channel **ND MicroCode** and shows the channel:
@@ -84,7 +84,7 @@ If the cursor is not in an instruction the message is *No instruction at cursor.
 
 ## Open live bit-breakdown view
 
-Command id: `nd-microcode.openBitView`
+Command id: `vscode-nd-microcode.openBitView`
 
 Opens a panel beside the editor, titled **ND MicroCode Bit View**. It shows
 the instruction at the cursor as a grid of bits and a table of the named
@@ -95,15 +95,15 @@ editor is not a `.uc` file.
 
 ## Set variant for this file
 
-Command id: `nd-microcode.setModel`
+Command id: `vscode-nd-microcode.setModel`
 
 Asks for a variant and for where to keep the choice (a `%#MODEL` line in the
-file, or the `nd-microcode.fileModels` setting). Also started by clicking
+file, or the `vscode-nd-microcode.fileModels` setting). Also started by clicking
 the status bar item. Details: [Choosing the variant](choosing-the-variant.md#set-the-variant).
 
 ## Import binary image and disassemble to .uc
 
-Command id: `nd-microcode.disassembleBinary`
+Command id: `vscode-nd-microcode.disassembleBinary`
 
 Reads an image file and opens its text as a new `.uc` document that starts
 with a `%#MODEL` line. The new document is not saved; use **Save As** to keep it.
@@ -129,14 +129,14 @@ and the number of words.
 
 ## Check this file
 
-Command id: `nd-microcode.checkFile`
+Command id: `vscode-nd-microcode.checkFile`
 
 Assembles the active file in memory and shows what the assembler says as
-marks in the editor and entries in the Problems view (source `nd-microcode`).
+marks in the editor and entries in the Problems view (source `vscode-nd-microcode`).
 Nothing is written to disk.
 
 This also runs **each time a `.uc` file is saved**, unless
-`nd-microcode.diagnostics.onSave` is turned off. Marks are removed when the
+`vscode-nd-microcode.diagnostics.onSave` is turned off. Marks are removed when the
 file is closed.
 
 ## Keyboard shortcuts
@@ -148,9 +148,9 @@ Keyboard Shortcuts (JSON)*):
 
 ```json
 [
-  { "key": "ctrl+alt+a", "command": "nd-microcode.assembleCurrent", "when": "editorLangId == uc" },
-  { "key": "ctrl+alt+b", "command": "nd-microcode.openBitView",    "when": "editorLangId == uc" },
-  { "key": "ctrl+alt+m", "command": "nd-microcode.setModel",       "when": "editorLangId == uc" }
+  { "key": "ctrl+alt+a", "command": "vscode-nd-microcode.assembleCurrent", "when": "editorLangId == uc" },
+  { "key": "ctrl+alt+b", "command": "vscode-nd-microcode.openBitView",    "when": "editorLangId == uc" },
+  { "key": "ctrl+alt+m", "command": "vscode-nd-microcode.setModel",       "when": "editorLangId == uc" }
 ]
 ```
 

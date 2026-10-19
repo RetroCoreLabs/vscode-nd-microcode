@@ -2,9 +2,9 @@
  * Which variant does a .uc file use? The one place that knows the rule:
  *
  *   1. a `%#MODEL <name>` line in the first 50 lines of the file,
- *   2. the setting `nd-microcode.fileModels` (glob -> model),
+ *   2. the setting `vscode-nd-microcode.fileModels` (glob -> model),
  *   3. the guess from the words in the file (shown only, never written),
- *   4. the setting `nd-microcode.defaultModel`.
+ *   4. the setting `vscode-nd-microcode.defaultModel`.
  *
  * No VS Code import: the settings and the file text are passed in.
  */
@@ -25,11 +25,11 @@ export interface Resolution {
 }
 
 export interface ResolverSettings {
-  /** Glob -> model name, from `nd-microcode.fileModels`. */
+  /** Glob -> model name, from `vscode-nd-microcode.fileModels`. */
   fileModels: Record<string, string>;
-  /** `nd-microcode.defaultModel`. */
+  /** `vscode-nd-microcode.defaultModel`. */
   defaultModel: string;
-  /** `nd-microcode.autodetect.enabled`. */
+  /** `vscode-nd-microcode.autodetect.enabled`. */
   autodetect: boolean;
 }
 

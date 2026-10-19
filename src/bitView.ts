@@ -14,7 +14,7 @@ import * as vscode from "vscode";
 import { instructionState, type InstructionState } from "./core/instruction";
 import { resolveForDocument } from "./modelResolver";
 
-const BIT_VIEW_VIEW_TYPE = "nd-microcode.bitView";
+const BIT_VIEW_VIEW_TYPE = "vscode-nd-microcode.bitView";
 
 function toBinary(v: bigint, bits: number): string {
   let out = "";
@@ -250,7 +250,7 @@ const controller = new BitViewController();
 
 export function registerBitView(context: vscode.ExtensionContext): vscode.Disposable {
   return vscode.commands.registerCommand(
-    "nd-microcode.openBitView",
+    "vscode-nd-microcode.openBitView",
     () => controller.open(context),
   );
 }

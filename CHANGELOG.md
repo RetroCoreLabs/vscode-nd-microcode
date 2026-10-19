@@ -1,11 +1,16 @@
 # Change Log
 
-All notable changes to the `nd-microcode` VSCode extension.
+All notable changes to the `vscode-nd-microcode` VSCode extension (earlier called `nd-microcode`).
 
 ## Unreleased
 
 ### Changed
 
+- Renamed from `nd-microcode` to `vscode-nd-microcode`: the repository is `RetroCoreLabs/vscode-nd-microcode`,
+  the extension id is `nd100uc.vscode-nd-microcode`, and the commands, menu group and settings start with
+  `vscode-nd-microcode.` instead of `nd-microcode.` (for example `vscode-nd-microcode.defaultModel` and
+  `vscode-nd-microcode.fileModels`). VS Code does not move settings by itself: rename them in your settings
+  and keybindings, and uninstall the old `nd100uc.nd-microcode` before installing the new one.
 - ND-100: the token `A,SHCE` is now `A,SRCE` (a misreading of the manual's dot matrix print) and `XRF`
   is a second name for bit 50, as the printed Norsk Data listing writes them (metadata submodule,
   300 ND-100 tokens). Hover, colours and the assembler know both new names.

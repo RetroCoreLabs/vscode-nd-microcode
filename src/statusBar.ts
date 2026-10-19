@@ -7,14 +7,14 @@ import * as vscode from "vscode";
 import { MODEL_INFO } from "./core/models";
 import { resolveForDocument } from "./modelResolver";
 
-export const SET_MODEL_COMMAND = "nd-microcode.setModel";
+export const SET_MODEL_COMMAND = "vscode-nd-microcode.setModel";
 
 const RULES =
   "How the variant is chosen (first rule that applies):\n" +
   "1. a %#MODEL <name> line in the first 50 lines of the file\n" +
-  "2. the setting nd-microcode.fileModels (file pattern -> variant)\n" +
+  "2. the setting vscode-nd-microcode.fileModels (file pattern -> variant)\n" +
   "3. a guess from the words in the file (shown here, never written)\n" +
-  "4. the setting nd-microcode.defaultModel\n\n" +
+  "4. the setting vscode-nd-microcode.defaultModel\n\n" +
   "Click to set the variant for this file.";
 
 export function registerStatusBar(context: vscode.ExtensionContext): void {
@@ -45,7 +45,7 @@ export function registerStatusBar(context: vscode.ExtensionContext): void {
       if (e.document === vscode.window.activeTextEditor?.document) update();
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("nd-microcode")) update();
+      if (e.affectsConfiguration("vscode-nd-microcode")) update();
     }),
   );
   update();

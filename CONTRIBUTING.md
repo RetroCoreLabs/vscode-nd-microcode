@@ -3,7 +3,7 @@
 ## Documentation site
 
 The site is built with MkDocs and the Material theme and published on GitHub
-Pages: <https://retrocorelabs.github.io/nd-microcode/>
+Pages: <https://retrocorelabs.github.io/vscode-nd-microcode/>
 
 | What | Where |
 |------|-------|

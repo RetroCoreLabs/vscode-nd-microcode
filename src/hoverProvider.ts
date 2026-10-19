@@ -473,7 +473,7 @@ function interpretNumeric(
 }
 
 function formatTokenHover(entry: TokenEntry, model: AnyModel): vscode.MarkdownString {
-  const config = vscode.workspace.getConfiguration("nd-microcode");
+  const config = vscode.workspace.getConfiguration("vscode-nd-microcode");
   const showEncoding = config.get<boolean>("hover.showEncoding", true);
   const showModelWarnings = config.get<boolean>(
     "hover.showModelWarnings",
@@ -551,7 +551,7 @@ function formatWideTokenHover(word: string, model: AnyModel): vscode.MarkdownStr
   const pack = loadWide(model);
   const token = pack.tokensByName.get(word);
   if (!token) return undefined;
-  const config = vscode.workspace.getConfiguration("nd-microcode");
+  const config = vscode.workspace.getConfiguration("vscode-nd-microcode");
   const md = new vscode.MarkdownString();
   md.isTrusted = false;
   md.supportHtml = false;

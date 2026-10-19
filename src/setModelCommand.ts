@@ -2,7 +2,7 @@
  * "ND Microcode: Set variant for this file".
  *
  * The user picks a variant and where to keep the choice: in the folder
- * settings (nd-microcode.fileModels, key = path of the file relative to the
+ * settings (vscode-nd-microcode.fileModels, key = path of the file relative to the
  * workspace folder) or as a `%#MODEL <name>` line at the top of the file.
  */
 
@@ -45,7 +45,7 @@ export async function setModelForFile(): Promise<void> {
       },
       {
         label: "Store in the folder settings",
-        description: "nd-microcode.fileModels in .vscode/settings.json",
+        description: "vscode-nd-microcode.fileModels in .vscode/settings.json",
         key: "settings",
       },
     ],
@@ -81,7 +81,7 @@ async function writeSetting(document: vscode.TextDocument, model: AnyModel): Pro
     );
     return;
   }
-  const config = vscode.workspace.getConfiguration("nd-microcode", folder.uri);
+  const config = vscode.workspace.getConfiguration("vscode-nd-microcode", folder.uri);
   const map = { ...(config.get<Record<string, string>>("fileModels", {}) ?? {}) };
   map[relativePath(document)] = model;
   await config.update("fileModels", map, vscode.ConfigurationTarget.WorkspaceFolder);

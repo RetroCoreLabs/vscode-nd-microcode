@@ -19,7 +19,7 @@ git submodule update --init --recursive      # if external/meta is empty
 cd external/meta/lib/ts && npm ci && npm run build && cd -   # the shared library, once
 npm install                                  # once
 npm run build                                # generate + compile + bundle
-npm run package                              # build, then make nd-microcode.vsix
+npm run package                              # build, then make vscode-nd-microcode.vsix
 ```
 
 `npm run build` runs three steps, in this order:
@@ -149,7 +149,7 @@ next `npm run generate` overwrites them.
 2. In the repository root: `npm run build`.
 3. Press `F5` in VS Code to try it in an Extension Dev Host.
 4. To install it: `npm run package`, then
-   `code --install-extension nd-microcode.vsix`.
+   `code --install-extension vscode-nd-microcode.vsix`.
 
 The submodule is its own repository. Commit and push the YAML change there
 first, then commit the new submodule pointer in this repository.
@@ -249,5 +249,5 @@ out/extension.js                     (has the library inside)
         |
         |  npm run package
         v
-nd-microcode.vsix
+vscode-nd-microcode.vsix
 ```
