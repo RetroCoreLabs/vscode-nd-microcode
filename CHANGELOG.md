@@ -4,6 +4,12 @@ All notable changes to the `nd-microcode` VSCode extension.
 
 ## Unreleased
 
+### Changed
+
+- ND-100: the token `A,SHCE` is now `A,SRCE` (a misreading of the manual's dot matrix print) and `XRF`
+  is a second name for bit 50, as the printed Norsk Data listing writes them (metadata submodule,
+  300 ND-100 tokens). Hover, colours and the assembler know both new names.
+
 ### Fixed
 
 - ND-100: bits 22-27 of the PROM words are inverted (XOR `0x0FC00000`, the same

@@ -7,7 +7,7 @@ The extension knows seven variant names. The page of each one lists its fields a
 | Variant | Name | Word bits | Mnemonics | Image written by *Assemble* | Ending |
 | --- | --- | ---: | ---: | --- | --- |
 | [NORD-10](nd10.md) | `nd10` | 32 | 197 | prom.hex text and 32-bit big-endian .CODE | `.hex` |
-| [ND-100](nd100.md) | `nd100` | 64 | 299 | .CODE, 10-byte records | `.CODE` |
+| [ND-100](nd100.md) | `nd100` | 64 | 300 | .CODE, 10-byte records | `.CODE` |
 | [ND-110](nd110.md) | `nd110` | 64 | 357 | .CODE, 10-byte records | `.CODE` |
 | [ND-120](nd120.md) | `nd120` | 64 | 358 | .CODE, 10-byte records | `.CODE` |
 | [ND-120 (L)](nd120-dly.md) | `nd120-dly` | 64 | 358 | .CODE, 10-byte records | `.CODE` |

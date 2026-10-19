@@ -1,7 +1,7 @@
 {
   "generatedFrom": "defs/tokens/nd100|nd110|nd120-tokens.yaml + defs/runtime/data-flow.yaml",
-  "generatedAt": "2026-10-19T05:56:18.214Z",
-  "tokenCount": 394,
+  "generatedAt": "2026-10-19T16:25:06.938Z",
+  "tokenCount": 393,
   "tokens": {
     "A,0": {
       "name": "A,0",
@@ -1212,30 +1212,6 @@
         }
       }
     },
-    "A,SHCE": {
-      "name": "A,SHCE",
-      "category": "A_REG",
-      "displayLine": 1,
-      "description": "A-OP. IS MACRO-IR BITS 3-5 (loaded by last T,MAPJ)",
-      "models": [
-        "nd100"
-      ],
-      "nd120Only": false,
-      "encoding": {
-        "w4": "000024",
-        "w3": "000000",
-        "w2": "000000",
-        "w1": "000000"
-      },
-      "encodings": {
-        "nd100": {
-          "w4": "000024",
-          "w3": "000000",
-          "w2": "000000",
-          "w1": "000000"
-        }
-      }
-    },
     "A,SRCE": {
       "name": "A,SRCE",
       "category": "A_REG",
@@ -1243,7 +1219,8 @@
       "description": "A-OP. IS VALUE OF 'INSTR. BITS 3-5' LOADED BY LAST 'T,MAPJ'",
       "models": [
         "nd110",
-        "nd120"
+        "nd120",
+        "nd100"
       ],
       "nd120Only": false,
       "provides": "A",
@@ -1261,6 +1238,12 @@
           "w1": "000000"
         },
         "nd120": {
+          "w4": "000024",
+          "w3": "000000",
+          "w2": "000000",
+          "w1": "000000"
+        },
+        "nd100": {
           "w4": "000024",
           "w3": "000000",
           "w2": "000000",
@@ -11366,7 +11349,7 @@
       "name": "EN_EXT",
       "category": "SPECIAL",
       "displayLine": 1,
-      "description": "Standalone XRF / Enable Extended Register File (bit 50). Normally bit 50 is embedded in composite A_REG tokens such as A,SHCE; this token exists for microwords where bit 50 is asserted but no composite A-operand token matches.",
+      "description": "Standalone XRF / Enable Extended Register File (bit 50). Normally bit 50 is embedded in composite A_REG tokens such as A,SRCE; this token exists for microwords where bit 50 is asserted but no composite A-operand token matches.",
       "models": [
         "nd100"
       ],
@@ -14039,7 +14022,8 @@
       "description": "SELECT EXTENDED REGISTER FILE",
       "models": [
         "nd110",
-        "nd120"
+        "nd120",
+        "nd100"
       ],
       "nd120Only": false,
       "provides": "AB",
@@ -14057,6 +14041,12 @@
           "w1": "000000"
         },
         "nd120": {
+          "w4": "000004",
+          "w3": "000000",
+          "w2": "000000",
+          "w1": "000000"
+        },
+        "nd100": {
           "w4": "000004",
           "w3": "000000",
           "w2": "000000",
