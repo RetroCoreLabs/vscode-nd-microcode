@@ -5,6 +5,8 @@
  */
 
 import {
+  ND100_XOR_MASK,
+  ND110_XOR_MASK,
   assembleSource,
   assembleWide,
   compileDisassemblerPack,
@@ -207,10 +209,13 @@ export function disassembleImage(input: DisassembleInput): DisassembleOutput {
       model = form.form;
       detected = ` (detected, confidence ${form.confidence.toFixed(2)})`;
     }
-    // ND-110 images hold the words in ROM storage form; the disassembler wants canonical.
+    // ND-110 and ND-100 images hold bits 22-27 inverted (ROM storage form); the
+    // disassembler wants the canonical form. ND-120 images are canonical.
+    // ND-06.031.1 chapter 4 (ND-110), ND-06.018.01 "Writing the Microprogram" (ND-100).
+    const storageMask = model === "nd110" ? ND110_XOR_MASK : model === "nd100" ? ND100_XOR_MASK : 0n;
     const canonical = new Map<number, bigint>();
     for (const [addr, v] of microcode) {
-      canonical.set(addr, model === "nd110" ? v ^ 0x0fc00000n : v);
+      canonical.set(addr, v ^ storageMask);
     }
     const pack = loadNd1x0(model);
     let symbols: Map<number, string> | undefined;
@@ -227,7 +232,7 @@ export function disassembleImage(input: DisassembleInput): DisassembleOutput {
     return {
       model,
       format,
-      text: head + "\n" + formatProgram(instrs),
+      text: head + "\n" + formatProgram(instrs, model === "nd100" ? { model: "nd100" } : {}),
       count: microcode.size,
     };
   }

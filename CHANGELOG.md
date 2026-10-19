@@ -2,6 +2,21 @@
 
 All notable changes to the `nd-microcode` VSCode extension.
 
+## Unreleased
+
+### Fixed
+
+- ND-100: bits 22-27 of the PROM words are inverted (XOR `0x0FC00000`, the same
+  as the ND-110; NORD-100 Microprogramming Description ND-06.018.01, "Writing the
+  Microprogram"). The disassembler, the assembler and the bit view now flip them,
+  so ND-100 `.CODE` files read and write in PROM form. Before, the ND-100 words
+  were used as they come from the chips and almost every word showed a vectored
+  jump with a loop counter. The ND-100 disassembly text no longer defines labels
+  at addresses above 0o7777 (bit 20 is a timing bit on the ND-100).
+- Metadata submodule: ND-100 mask corrected in the library, tools and
+  documentation (earlier `0x01800000` and `0x0F800000`); the ND-120 images are
+  documented as canonical, as the manual says.
+
 ## 0.2.1 - 2026-10-18
 
 ### Added

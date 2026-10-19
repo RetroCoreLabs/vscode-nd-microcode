@@ -4,6 +4,8 @@
  */
 
 import {
+  ND100_XOR_MASK,
+  ND110_XOR_MASK,
   assembleWide,
   extractBits,
   isWideModel,
@@ -37,7 +39,7 @@ export interface InstructionState {
   partsOctal: string[];
   /** The word as the assembler made it. */
   word: bigint;
-  /** ND-110 only: the word in ROM storage form. */
+  /** ND-110 and ND-100: the word in ROM storage form (bits 22-27 inverted). */
   storage?: bigint;
   /** NORD-10 only: ARITHMETIC, INTERBLOCK, JUMP or LOOP. */
   formatName?: string;
@@ -224,7 +226,7 @@ export function instructionState(
     wordBits: info.wordBits,
     partsOctal: partsOf(word, info.wordBits),
     word,
-    storage: model === "nd110" ? word ^ 0x0fc00000n : undefined,
+    storage: model === "nd110" ? word ^ ND110_XOR_MASK : model === "nd100" ? word ^ ND100_XOR_MASK : undefined,
     rows: rowsFor(word, specs),
     errors: diagnostics.map((d) => `line ${d.line}: ${d.message}`),
   };

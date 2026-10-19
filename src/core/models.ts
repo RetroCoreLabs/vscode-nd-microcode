@@ -37,7 +37,7 @@ export const MODEL_INFO: Readonly<Record<AnyModel, ModelInfo>> = {
   },
   nd100: {
     display: "ND-100",
-    description: "ND-100 (3033S / 3033E-CX), 48 bits stored in 64",
+    description: "ND-100 (3033S / 3033E-CX), 48 bits stored in 64, ROM storage form",
     wordBits: 64,
     family: "nd1x0",
     nativeFormat: ".CODE, 10-byte records",
